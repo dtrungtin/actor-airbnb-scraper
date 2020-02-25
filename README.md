@@ -33,7 +33,7 @@ You can either use UI to pass the list of urls or you can specify the `INPUT` di
     ]
 ```
 
-### Output
+## Output
 
 Output is stored in a dataset. Each item is an information about a listing detail. Example:
 
@@ -53,7 +53,7 @@ Output is stored in a dataset. Each item is an information about a listing detai
 }
 ```
 
-### Compute units consumption
+## Compute units consumption
 Keep in mind that it is much more efficient to run one longer scrape (at least one minute) than more shorter ones because of the startup time.
 
 The average consumption is **1 Compute unit for 600 actor results** scraped
