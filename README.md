@@ -33,5 +33,30 @@ You can either use UI to pass the list of urls or you can specify the `INPUT` di
     ]
 ```
 
+### Output
+
+Output is stored in a dataset. Each item is an information about a listing detail. Example:
+
+```
+{
+  "url": "https://api.airbnb.com/v2/pdp_listing_details/20840497?_format=for_native",
+  "name": "Koselig hytte i fredelige omgivelser",
+  "stars": 5,
+  "numberOfGuests": 9,
+  "address": "Geilo, Buskerud, Norway",
+  "roomType": "Entire cabin",
+  "location": {
+    "lat": 60.47574,
+    "lng": 8.1929
+  },
+  "reviews": []
+}
+```
+
+### Compute units consumption
+Keep in mind that it is much more efficient to run one longer scrape (at least one minute) than more shorter ones because of the startup time.
+
+The average consumption is **1 Compute unit for 600 actor results** scraped
+
 ## Epilogue
 Thank you for trying my actor. I will be very glad for a feedback that you can send to my email `dtrungtin@gmail.com`. If you find any bug, please create an issue on the [Github page](https://github.com/dtrungtin/actor-airbnb-scraper).
