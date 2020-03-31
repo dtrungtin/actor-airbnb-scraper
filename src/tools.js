@@ -242,8 +242,8 @@ function validateInput(input) {
         if (!Array.isArray(input.startUrls)) {
             throw new Error('startUrls should be an array');
         }
-        input.startUrls.forEach((url) => {
-            if (!url.url.includes('airbnb')) {
+        input.startUrls.forEach((request) => {
+            if (request.url && !request.url.includes('airbnb')) {
                 throw new Error('Start url should be an airbnb');
             }
         });

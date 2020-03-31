@@ -1,7 +1,7 @@
 const Apify = require('apify');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 
-const { utils: { log, requestAsBrowser, sleep } } = Apify;
+const { utils: { log, requestAsBrowser, sleep, downloadListOfUrls } } = Apify;
 const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation } = require('./tools');
 const { cityToAreas } = require('./mapApi');
 
@@ -71,9 +71,22 @@ Apify.main(async () => {
 
     const requestQueue = await Apify.openRequestQueue();
     if (startUrls && startUrls.length > 0) {
-        for (const { url } of startUrls) {
-            const id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
-            await enqueueDetailLink(id, requestQueue);
+        for (const request of startUrls) {
+            if (request.requestsFromUrl) {
+                const sourceUrlList = await downloadListOfUrls({ url: request.requestsFromUrl });
+                for (const url of sourceUrlList) {
+                    if (!url.includes('airbnb')) {
+                        throw new Error('Start url should be an airbnb');
+                    }
+
+                    const id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
+                    await enqueueDetailLink(id, requestQueue);
+                }
+            } else {
+                const { url } = request;
+                const id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
+                await enqueueDetailLink(id, requestQueue);
+            }
         }
     } else {
         await addListings(locationQuery, requestQueue, minPrice, maxPrice, checkIn, checkOut);
