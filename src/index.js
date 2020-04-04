@@ -79,12 +79,25 @@ Apify.main(async () => {
                         throw new Error('Start url should be an airbnb');
                     }
 
-                    const id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
+                    let id;
+                    if (url.includes('?')) {
+                        id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
+                    } else {
+                        id = url.slice(url.lastIndexOf('/') + 1);
+                    }
+
                     await enqueueDetailLink(id, requestQueue);
                 }
             } else {
                 const { url } = request;
-                const id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
+
+                let id;
+                if (url.includes('?')) {
+                    id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
+                } else {
+                    id = url.slice(url.lastIndexOf('/') + 1);
+                }
+
                 await enqueueDetailLink(id, requestQueue);
             }
         }
