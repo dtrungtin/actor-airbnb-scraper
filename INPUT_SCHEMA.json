@@ -16,7 +16,7 @@
       "type": "array",
       "description": "Urls of Airbnb details (not search urls), when set the actor will ignore locationQuery and will return results only for these listings",
       "editor": "requestListSources"
-    },    
+    },
     "simple": {
       "title": "Extract main listing information only (no detail)",
       "type": "boolean",
@@ -353,7 +353,7 @@
         "ZWR"
       ],
       "default": "CZK"
-    },    
+    },
     "checkIn": {
       "title": "Checkin date",
       "type": "string",
@@ -384,7 +384,25 @@
       "type": "integer",
       "description": "Defines how many pages can be processed by the scraper in parallel. The scraper automatically increases and decreases concurrency based on available system resources. Use this option to set a hard limit.",
       "minimum": 1,
-      "default": 50
+      "default": 50,
+      "prefill": 50
+    },
+    "limitPoints": {
+      "title": "Limit points",
+      "type": "integer",
+      "description": "Limits the number of geo points returned by the reverse API. The higher the number, the longer it takes. There's no upper limit",
+      "minimum": 1,
+      "default": 100,
+      "prefill": 100
+    },
+    "timeoutMs": {
+      "title": "Timeout milliseconds",
+      "type": "integer",
+      "description": "Override the default 30s (30.000ms) timeout when not using startUrls",
+      "minimum": 30000,
+      "default": 30000,
+      "prefill": 30000
+
     }
   },
   "required": [

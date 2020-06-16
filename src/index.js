@@ -20,15 +20,15 @@ Apify.main(async () => {
         startUrls,
         proxyConfiguration,
         includeReviews,
+        limitPoints = 100,
+        timeoutMs = 30000,
     } = input;
 
+    const proxy = await Apify.createProxyConfiguration({
+        ...proxyConfiguration,
+    });
+
     const getRequest = async (url) => {
-        const getProxyUrl = () => {
-            return Apify.getApifyProxyUrl({
-                groups: proxyConfiguration.apifyProxyGroups,
-                session: `airbnb_${Math.floor(Math.random() * 100000000)}`,
-            });
-        };
         const getData = async (attempt = 0) => {
             let response;
 
@@ -38,7 +38,7 @@ Apify.main(async () => {
                     'x-airbnb-currency': currency,
                     'x-airbnb-api-key': process.env.API_KEY,
                 },
-                proxyUrl: getProxyUrl(),
+                proxyUrl: proxy.newUrl(`airbnb_${Math.floor(Math.random() * 100000000)}`),
                 abortFunction: (res) => {
                     const { statusCode } = res;
                     return statusCode !== 200;
@@ -106,7 +106,7 @@ Apify.main(async () => {
 
         const cityQuery = await getSearchLocation(locationQuery, minPrice, maxPrice, checkIn, checkOut, getRequest);
         log.info(`Location query: ${cityQuery}`);
-        const areaList = await cityToAreas(cityQuery, getRequest);
+        const areaList = await cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs);
         if (areaList.length === 0) {
             log.info('Cannot divide location query into smaller areas!');
         } else {

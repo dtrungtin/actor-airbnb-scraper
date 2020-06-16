@@ -84,7 +84,7 @@ function getPolygons(geoJson, distanceKilometers) {
         return [turf.circle(midPoint, length, options)];
     }
 
-    return coordinates.map(coords => turf.polygon(coords));
+    return coordinates.map((coords) => turf.polygon(coords));
 }
 
 async function findPointsInPolygon(location, distanceKilometers) {
@@ -128,7 +128,7 @@ async function findPointsInPolygon(location, distanceKilometers) {
     return points;
 }
 
-async function cityToAreas(cityQuery, getRequest) {
+async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {
     const distanceMeters = DISTANCE_METERS;
     const params = { query: cityQuery };
     const polygons = await findPolygons(params, getRequest);
@@ -156,7 +156,7 @@ async function cityToAreas(cityQuery, getRequest) {
     }
 
     // Debug
-    const geoPoints = points.map(point => turf.point([point.lon, point.lat]));
+    const geoPoints = points.map((point) => turf.point([point.lon, point.lat]));
     const collection = turf.featureCollection(geoPoints);
     await Apify.setValue('COORDS', collection);
 
@@ -165,18 +165,26 @@ async function cityToAreas(cityQuery, getRequest) {
         const pointInfo = await reverse(point, getRequest);
         // eslint-disable-next-line camelcase
         const { display_name } = pointInfo;
-        log.debug(display_name);
+        log.debug(display_name, pointInfo);
 
-        await dataset.push(pointInfo.boundingbox);
-        await sleep(250);
+        dataset.push(pointInfo.boundingbox);
+        await sleep(500);
     };
 
-    let promises = [];
-    for (const point of points) {
-        promises.push(reversePoint(point));
+    const promises = [];
+    log.debug(`Points found ${limitPoints} / ${points.length}`);
+
+    for (const point of points.slice(0, limitPoints)) {
+        promises.push(Promise.race([
+            sleep(timeoutMs),
+            reversePoint(point),
+        ]));
+
         if (promises.length >= MAX_REVERSE_API_CONCURRENCY) {
+            log.debug('Over reverse api concurrency, waiting');
             await Promise.all(promises);
-            promises = [];
+            log.debug('Continuing');
+            promises.length = 0;
         }
     }
     await Promise.all(promises);

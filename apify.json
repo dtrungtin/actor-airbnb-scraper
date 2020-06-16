@@ -2,6 +2,8 @@
 	"name": "airbnb-scraper",
 	"version": "0.0",
 	"buildTag": "latest",
-	"env": null,
+	"env": {
+		"APIFY_LOG_LEVEL": "DEBUG"
+	},
 	"template": "puppeteer_crawler"
 }

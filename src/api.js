@@ -37,7 +37,7 @@ function buildListingUrl(location, priceMin = DEFAULT_MIN_PRICE, priceMax = DEFA
         };
     }
 
-    queryString.key = 'd306zoyjsyarp7ifhu67rjxn52tv0t20';
+    queryString.key = process.env.API_KEY;
 
     if (checkIn) {
         queryString.checkin = checkIn;

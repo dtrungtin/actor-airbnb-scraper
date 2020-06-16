@@ -4,14 +4,14 @@
 	"description": "This is a boilerplate of an Apify actor.",
 	"main": "main.js",
 	"dependencies": {
-		"apify": "^0.20.2",
+		"apify": "^0.21.0",
 		"camelcase-keys-recursive": "^0.8.3",
 		"moment": "^2.24.0",
 		"@turf/turf": "^5.1.6"
 	},
 	"devDependencies": {
-		"@apify/eslint-config": "0.0.3",
-		"eslint": "^6.8.0"
+		"@apify/eslint-config": "^0.1.0",
+		"eslint": "^7.2.0"
 	},
 	"scripts": {
 		"start": "node main.js",
