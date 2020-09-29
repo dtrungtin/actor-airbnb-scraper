@@ -2,6 +2,7 @@ const Apify = require('apify');
 const turf = require('@turf/turf');
 
 const { DISTANCE_METERS } = require('./constants');
+const { meterPrecision } = require('./tools');
 
 const { log, sleep } = Apify.utils;
 
@@ -87,7 +88,7 @@ function getPolygons(geoJson, distanceKilometers) {
     return coordinates.map((coords) => turf.polygon(coords));
 }
 
-async function findPointsInPolygon(location, distanceKilometers) {
+function findPointsInPolygon(location, distanceKilometers) {
     const { geojson } = location;
     const { coordinates } = geojson;
     if (!coordinates) return [];
@@ -149,14 +150,21 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     log.info(`Got ${filteredPolygons.length} filtered polygons`);
     const distanceKilometers = distanceMeters / 1000;
 
-    const points = [];
+    const pointMap = new Map();
     for (const polygon of filteredPolygons) {
         log.info(polygon.display_name);
-        points.push(...await findPointsInPolygon(polygon, distanceKilometers));
+        for (const pip of findPointsInPolygon(polygon, distanceKilometers)) {
+            const lon = meterPrecision(pip.lon);
+            const lat = meterPrecision(pip.lat);
+            // deduplicate really near points
+            pointMap.set(`${lon},${lat}`, { lon, lat });
+        }
     }
 
+    const points = [...pointMap.values()];
+
     // Debug
-    const geoPoints = points.map((point) => turf.point([point.lon, point.lat]));
+    const geoPoints = points.map(({ lon, lat }) => turf.point([lon, lat]));
     const collection = turf.featureCollection(geoPoints);
     await Apify.setValue('COORDS', collection);
 
@@ -168,7 +176,7 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
         log.debug(display_name, pointInfo);
 
         dataset.push(pointInfo.boundingbox);
-        await sleep(500);
+        await sleep(200);
     };
 
     const promises = [];

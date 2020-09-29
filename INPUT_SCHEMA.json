@@ -33,19 +33,22 @@
       "title": "Maximum reviews",
       "type": "integer",
       "description": "Amount of reviews to be scraped for each listing.",
-      "default": 1000
+      "default": 1000,
+      "example": 1000
     },
     "minPrice": {
       "title": "Minimum price",
       "type": "integer",
       "description": "Sets filter min_price (per night) to the search query.",
-      "default": 0
+      "default": 0,
+      "example": 100
     },
     "maxPrice": {
       "title": "Maximum price",
       "type": "integer",
       "description": "Sets filter max_price (per night) to the search query.",
-      "default": 100000
+      "default": 100000,
+      "example": 100000
     },
     "currency": {
       "title": "Currency",
@@ -379,6 +382,13 @@
       },
       "editor": "proxy"
     },
+    "maxListings": {
+      "title": "Max listings",
+      "type": "integer",
+      "description": "Limit the amount of results you want. Omit this setting for no limit",
+      "prefill": 0,
+      "example": 10
+    },
     "maxConcurrency": {
       "title": "Max concurrency",
       "type": "integer",
@@ -392,16 +402,16 @@
       "type": "integer",
       "description": "Limits the number of geo points returned by the reverse API. The higher the number, the longer it takes. There's no upper limit",
       "minimum": 1,
-      "default": 100,
-      "prefill": 100
+      "default": 1000,
+      "prefill": 1000
     },
     "timeoutMs": {
       "title": "Timeout milliseconds",
       "type": "integer",
-      "description": "Override the default 30s (30.000ms) timeout when not using startUrls",
-      "minimum": 30000,
-      "default": 30000,
-      "prefill": 30000
+      "description": "Override the default 60s (60.000ms) timeout when not using startUrls",
+      "minimum": 60000,
+      "default": 60000,
+      "prefill": 60000
 
     }
   },

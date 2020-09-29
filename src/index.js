@@ -2,7 +2,7 @@ const Apify = require('apify');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 
 const { utils: { log, requestAsBrowser, sleep, downloadListOfUrls } } = Apify;
-const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation } = require('./tools');
+const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
 const { cityToAreas } = require('./mapApi');
 
 Apify.main(async () => {
@@ -11,7 +11,6 @@ Apify.main(async () => {
     validateInput(input);
 
     const {
-        currency,
         locationQuery,
         minPrice,
         maxPrice,
@@ -20,47 +19,60 @@ Apify.main(async () => {
         startUrls,
         proxyConfiguration,
         includeReviews,
-        limitPoints = 100,
-        timeoutMs = 30000,
+        maxListings,
+        limitPoints = 1000,
+        timeoutMs = 60000,
     } = input;
 
     const proxy = await Apify.createProxyConfiguration({
         ...proxyConfiguration,
     });
 
-    const getRequest = async (url) => {
+    const { abortOnMaxItems, persistState } = await isMaxListing(maxListings);
+    Apify.events.on('persistState', persistState);
+
+    /**
+     * @param {Apify.Session | null} session
+     */
+    const getRequest = (session) => async (url) => {
         const getData = async (attempt = 0) => {
             let response;
 
             const options = {
                 url,
                 headers: {
-                    'x-airbnb-currency': currency,
-                    'x-airbnb-api-key': process.env.API_KEY,
+                    'X-Airbnb-API-Key': process.env.API_KEY,
                 },
-                proxyUrl: proxy.newUrl(`airbnb_${Math.floor(Math.random() * 100000000)}`),
+                proxyUrl: proxy.newUrl(session ? session.id : `airbnb_${Math.floor(Math.random() * 100000000)}`),
                 abortFunction: (res) => {
                     const { statusCode } = res;
                     return statusCode !== 200;
                 },
-                timeoutSecs: 300,
+                timeoutSecs: 600,
             };
 
             try {
                 response = await requestAsBrowser(options);
             } catch (e) {
+                if (session) {
+                    session.markBad();
+                }
                 // log.exception(e.message, 'GetData error');
             }
 
             const valid = !!response && !!response.body;
             if (valid === false) {
                 if (attempt >= 10) {
+                    if (session) {
+                        session.markBad();
+                    }
+
                     throw new Error(`Could not get data for: ${options.url}`);
                 }
 
                 await sleep(5000);
-                const data = await getData(attempt + 1);
-                return data;
+
+                return getData(attempt + 1);
             }
 
             return JSON.parse(response.body);
@@ -70,48 +82,33 @@ Apify.main(async () => {
     };
 
     const requestQueue = await Apify.openRequestQueue();
+
     if (startUrls && startUrls.length > 0) {
-        for (const request of startUrls) {
-            if (request.requestsFromUrl) {
-                const sourceUrlList = await downloadListOfUrls({ url: request.requestsFromUrl });
-                for (const url of sourceUrlList) {
-                    if (!url.includes('airbnb')) {
-                        throw new Error('Start url should be an airbnb');
-                    }
+        const requestList = await Apify.openRequestList('STARTURLS', startUrls);
+        let request;
 
-                    let id;
-                    if (url.includes('?')) {
-                        id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
-                    } else {
-                        id = url.slice(url.lastIndexOf('/') + 1);
-                    }
-
-                    await enqueueDetailLink(id, requestQueue);
-                }
-            } else {
-                const { url } = request;
-
-                let id;
-                if (url.includes('?')) {
-                    id = url.slice(url.lastIndexOf('/') + 1, url.indexOf('?'));
-                } else {
-                    id = url.slice(url.lastIndexOf('/') + 1);
-                }
-
-                await enqueueDetailLink(id, requestQueue);
+        while (request = await requestList.fetchNextRequest()) {
+            if (!request.url.includes('airbnb.com')) {
+                throw new Error(`Provided urls must be AirBnB urls, got ${request.url}`);
             }
+
+            const url = new URL(request.url);
+            const id = url.pathname.split('/').pop();
+
+            await enqueueDetailLink(id, requestQueue, minPrice, maxPrice);
         }
     } else {
-        await addListings(locationQuery, requestQueue, minPrice, maxPrice, checkIn, checkOut);
+        await addListings({ minPrice, maxPrice, checkIn, checkOut }, locationQuery, requestQueue);
 
-        const cityQuery = await getSearchLocation(locationQuery, minPrice, maxPrice, checkIn, checkOut, getRequest);
+        const doReq = getRequest(null);
+        const cityQuery = await getSearchLocation(input, locationQuery, doReq);
         log.info(`Location query: ${cityQuery}`);
-        const areaList = await cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs);
+        const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
         if (areaList.length === 0) {
             log.info('Cannot divide location query into smaller areas!');
         } else {
             for (const area of areaList) {
-                await addListings(area, requestQueue, minPrice, maxPrice, checkIn, checkOut);
+                await addListings({ minPrice, maxPrice, checkIn, checkOut }, area, requestQueue);
             }
         }
     }
@@ -120,21 +117,23 @@ Apify.main(async () => {
         requestQueue,
         maxConcurrency: input.maxConcurrency,
         handleRequestTimeoutSecs: 1200,
-        handleRequestFunction: async ({ request }) => {
+        useSessionPool: true,
+        handleRequestFunction: async ({ request, autoscaledPool, session }) => {
             const { isHomeDetail, isPivoting } = request.userData;
+            const doReq = getRequest(session);
 
             if (isPivoting) {
-                await pivot(request, requestQueue, getRequest);
+                await pivot(input, request, requestQueue, doReq);
             } else if (isHomeDetail) {
                 try {
-                    const { pdp_listing_detail: detail } = await getRequest(request.url);
+                    const { pdp_listing_detail: detail } = await doReq(request.url);
                     log.info(`Saving home detail - ${detail.id}`);
 
                     detail.reviews = [];
 
                     if (includeReviews) {
                         try {
-                            detail.reviews = await getReviews(request.userData.id, getRequest);
+                            detail.reviews = await getReviews(request.userData.id, doReq);
                         } catch (e) {
                             log.exception(e, 'Could not get reviews');
                         }
@@ -159,26 +158,28 @@ Apify.main(async () => {
                     if (input.simple) {
                         await Apify.pushData(simpleResult);
                     } else {
-                        result.locationTitle = undefined;
-                        result.starRating = undefined;
-                        result.guestLabel = undefined;
-                        result.p3SummaryTitle = undefined;
-                        result.lat = undefined;
-                        result.lng = undefined;
-                        result.roomAndPropertyType = undefined;
-
                         const newResult = {
                             ...simpleResult,
                             ...result,
+                            locationTitle: undefined,
+                            starRating: undefined,
+                            guestLabel: undefined,
+                            p3SummaryTitle: undefined,
+                            lat: undefined,
+                            lng: undefined,
+                            roomAndPropertyType: undefined,
                         };
+
                         await Apify.pushData(newResult);
                     }
+
+                    if (abortOnMaxItems()) {
+                        await autoscaledPool.abort();
+                    }
                 } catch (e) {
-                    log.error('Could not get detail for home', e.message);
+                    log.exception(e, 'Could not get detail for home', { url: request.url });
                 }
             }
-
-            await sleep(5000);
         },
 
         handleFailedRequestFunction: async ({ request }) => {
@@ -190,5 +191,7 @@ Apify.main(async () => {
     });
 
     await crawler.run();
+    await persistState();
+
     log.info('Crawler finished.');
 });
