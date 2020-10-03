@@ -158,18 +158,23 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     log.info(`Got ${filteredPolygons.length} filtered polygons`);
     const distanceKilometers = distanceMeters / 1000;
 
-    const pointMap = new Map();
-    for (const polygon of filteredPolygons) {
-        log.info('Finding points in polygon, (might take a while)', { place_id: polygon.place_id });
-        const pips = findPointsInPolygon(polygon, distanceKilometers, limitPoints);
-        log.info(`${pips.length} points in polygon`);
+    const pointMap = new Map(await Apify.getValue('POINTS'));
 
-        for (const pip of pips) {
-            const lon = meterPrecision(pip.lon);
-            const lat = meterPrecision(pip.lat);
-            // deduplicate really near points
-            pointMap.set(`${lon},${lat}`, { lon, lat });
+    if (!pointMap.size) {
+        for (const polygon of filteredPolygons) {
+            log.info('Finding points in polygon, (might take a while)', { place_id: polygon.place_id });
+            const pips = findPointsInPolygon(polygon, distanceKilometers, limitPoints);
+            log.info(`${pips.length} points in polygon`);
+
+            for (const pip of pips) {
+                const lon = meterPrecision(pip.lon);
+                const lat = meterPrecision(pip.lat);
+                // deduplicate really near points
+                pointMap.set(`${lon},${lat}`, { lon, lat });
+            }
         }
+
+        await Apify.setValue('POINTS', [...pointMap.entries()]);
     }
 
     const points = [...pointMap.values()];
