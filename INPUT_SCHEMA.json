@@ -36,6 +36,18 @@
       "default": 1000,
       "example": 1000
     },
+    "checkIn": {
+      "title": "Checkin date",
+      "type": "string",
+      "description": "First day of stay. Format: YYYY-MM-DD",
+      "editor": "textfield"
+    },
+    "checkOut": {
+      "title": "Checkout date",
+      "type": "string",
+      "description": "Last day of stay. Format: YYYY-MM-DD",
+      "editor": "textfield"
+    },
     "minPrice": {
       "title": "Minimum price",
       "type": "integer",
@@ -49,6 +61,12 @@
       "description": "Sets filter max_price (per night) to the search query.",
       "default": 100000,
       "example": 100000
+    },
+    "includeCalendar": {
+      "title": "Include calendar",
+      "type": "boolean",
+      "description": "If checked, includes the available range of days",
+      "default": false
     },
     "currency": {
       "title": "Currency",
@@ -357,18 +375,6 @@
       ],
       "default": "CZK"
     },
-    "checkIn": {
-      "title": "Checkin date",
-      "type": "string",
-      "description": "First day of stay. Format: YYYY-MM-DD",
-      "editor": "textfield"
-    },
-    "checkOut": {
-      "title": "Checkout date",
-      "type": "string",
-      "description": "Last day of stay. Format: YYYY-MM-DD",
-      "editor": "textfield"
-    },
     "proxyConfiguration": {
       "title": "Proxy configuration",
       "type": "object",
@@ -402,8 +408,8 @@
       "type": "integer",
       "description": "Limits the number of geo points returned by the reverse API. The higher the number, the longer it takes. There's no upper limit",
       "minimum": 1,
-      "default": 1000,
-      "prefill": 1000
+      "default": 100,
+      "prefill": 100
     },
     "timeoutMs": {
       "title": "Timeout milliseconds",
@@ -412,7 +418,12 @@
       "minimum": 60000,
       "default": 60000,
       "prefill": 60000
-
+    },
+    "debugLog": {
+      "title": "Debug Log",
+      "type": "boolean",
+      "description": "Shows additional debugging information",
+      "default": true
     }
   },
   "required": [

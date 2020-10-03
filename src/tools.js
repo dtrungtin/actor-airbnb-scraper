@@ -1,11 +1,12 @@
 const Apify = require('apify');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const moment = require('moment');
+const get = require('lodash.get');
 const currencies = require('./currencyCodes.json');
 
 const { utils: { log } } = Apify;
 // log.setLevel(log.LEVELS.DEBUG);
-const { buildListingUrl, callForReviews } = require('./api');
+const { callForReviews } = require('./api');
 const {
     HISTOGRAM_ITEMS_COUNT,
     MIN_LIMIT,
@@ -18,11 +19,14 @@ const {
  * @param {Apify.RequestQueue} requestQueue
  * @param {number} minPrice
  * @param {number} maxPrice
+ * @param {string} originalUrl
  */
-async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice) {
+async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, originalUrl) {
     log.info(`Listings section size: ${results.length}`);
-    for (const { listing } of results) {
-        await enqueueDetailLink(listing.id, requestQueue, minPrice, maxPrice);
+
+    for (const l of results) {
+        const { rate, rate_type, rate_with_service_fee } = get(l, ['pricing_quote'], {});
+        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, originalUrl, { rate, rate_type, rate_with_service_fee });
     }
 }
 
@@ -31,16 +35,21 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
  * @param {Apify.RequestQueue} requestQueue
  * @param {number} minPrice
  * @param {number} maxPrice
+ * @param {string} originalUrl
+ * @param {any} pricing
  */
-function enqueueDetailLink(id, requestQueue, minPrice, maxPrice) {
+function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pricing) {
     log.debug(`Enquing home with id: ${id}`);
+
     return requestQueue.addRequest({
         url: `https://api.airbnb.com/v2/pdp_listing_details/${id}?_format=for_native`,
         userData: {
             isHomeDetail: true,
             minPrice,
             maxPrice,
+            pricing,
             id,
+            originalUrl,
         },
     });
 }
@@ -52,11 +61,12 @@ function randomDelay(minimum = 100, maximum = 200) {
 }
 
 /**
- * @param {any} input
+ * @param {{ minPrice: number, maxPrice: number }} input
  * @param {number[] | string} location
  * @param {(...args: any) => Promise<any>} getRequest
+ * @param {(...args: any) => string} buildListingUrl
  */
-async function getSearchLocation({ minPrice, maxPrice, checkIn, checkOut, currency }, location, getRequest) {
+async function getSearchLocation({ minPrice, maxPrice }, location, getRequest, buildListingUrl) {
     const limit = MAX_LIMIT;
     const offset = 0;
     const data = await getRequest(
@@ -66,9 +76,6 @@ async function getSearchLocation({ minPrice, maxPrice, checkIn, checkOut, curren
             maxPrice,
             limit,
             offset,
-            checkIn,
-            currency,
-            checkOut,
         }),
     );
     const { query } = data.metadata;
@@ -78,52 +85,58 @@ async function getSearchLocation({ minPrice, maxPrice, checkIn, checkOut, curren
     return query;
 }
 
+/**
+ * @param {Array<{ result_type: string, listings: any[] }>} sections
+ */
 function findListings(sections) {
-    let listings;
-
     for (let index = 0; index < sections.length; index++) {
         const section = sections[index];
 
         if (section.result_type === 'listings' && section.listings && section.listings.length > 0) {
             // eslint-disable-next-line prefer-destructuring
-            listings = section.listings;
-            break;
+            return section.listings;
         }
     }
 
-    return listings;
+    return [];
 }
 
 /**
- * @param {any} input
+ * @param {{ minPrice: number, maxPrice: number }} input
  * @param {number[] | string} location
  * @param {Apify.RequestQueue} requestQueue
  * @param {(...args: any) => Promise<any>} getRequest
+ * @param {(...args: any) => string} buildListingUrl
  */
-async function getListingsSection({ minPrice, maxPrice, checkIn, checkOut, currency }, location, requestQueue, getRequest) {
+async function getListingsSection({ minPrice, maxPrice }, location, requestQueue, getRequest, buildListingUrl) {
     const limit = MAX_LIMIT;
     let offset = 0;
-    const request = () => getRequest(buildListingUrl({ location, minPrice, maxPrice, limit, offset, checkIn, checkOut, currency }));
-    let data = await request();
+    const request = async () => {
+        const url = buildListingUrl({ location, minPrice, maxPrice, limit, offset });
+        return { data: await getRequest(url), url };
+    };
+    const { data, url: firstUrl } = await request();
     // eslint-disable-next-line camelcase
     const { pagination_metadata, sections } = data.explore_tabs[0];
     let listings = findListings(sections);
-    if (listings) {
-        await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice);
+
+    if (listings.length) {
+        await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, firstUrl);
     }
 
     let hasNextPage = pagination_metadata.has_next_page;
-    // log.info(`Listings metadata: listings: ${listings.length}, hasNextPage: ${hasNextPage}, localized_listing_count: ${localized_listing_count}`);
+    log.debug(`Listings metadata: listings: ${listings.length}, hasNextPage: ${hasNextPage}`);
 
     while (hasNextPage) {
         offset += limit;
         await randomDelay();
-        data = await request();
+        const { data: nextData, url: nextUrl } = await request();
         // eslint-disable-next-line camelcase
-        const { pagination_metadata, sections } = data.explore_tabs[0];
+        const { pagination_metadata, sections } = nextData.explore_tabs[0];
         listings = findListings(sections);
-        if (listings) {
-            await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice);
+
+        if (listings.length) {
+            await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, nextUrl);
         }
 
         hasNextPage = pagination_metadata.has_next_page;
@@ -131,14 +144,15 @@ async function getListingsSection({ minPrice, maxPrice, checkIn, checkOut, curre
 }
 
 /**
- * @param {any} input
+ * @param {{ minPrice: number, maxPrice: number }} input
  * @param {number[] | string} query
  * @param {Apify.RequestQueue} requestQueue
+ * @param {(...args: any) => string} buildListingUrl
  */
-async function addListings({ minPrice, maxPrice, checkIn, checkOut, currency }, query, requestQueue) {
+async function addListings({ minPrice, maxPrice }, query, requestQueue, buildListingUrl) {
     const intervalSize = maxPrice / HISTOGRAM_ITEMS_COUNT;
     let pivotStart = minPrice;
-    let pivotEnd = intervalSize;
+    let pivotEnd = intervalSize + minPrice;
 
     for (let i = 0; i < HISTOGRAM_ITEMS_COUNT; i++) {
         const url = buildListingUrl({
@@ -147,9 +161,6 @@ async function addListings({ minPrice, maxPrice, checkIn, checkOut, currency }, 
             maxPrice: pivotEnd,
             limit: MIN_LIMIT,
             offset: 0,
-            checkIn,
-            checkOut,
-            currency,
         });
 
         log.debug(`Adding initial pivoting url: ${url}`);
@@ -166,17 +177,21 @@ async function addListings({ minPrice, maxPrice, checkIn, checkOut, currency }, 
 
         pivotStart += intervalSize;
         pivotEnd += intervalSize;
+
+        if (pivotEnd > maxPrice) {
+            // stop early
+            break;
+        }
     }
 }
 
 /**
- * @param {any} input
  * @param {Apify.Request} request
  * @param {Apify.RequestQueue} requestQueue
  * @param {(...args: any) => Promise<any>} getRequest
+ * @param {(...args: any) => string} buildListingUrl
  */
-async function pivot(input, request, requestQueue, getRequest) {
-    const { checkIn, checkOut, currency } = input;
+async function pivot(request, requestQueue, getRequest, buildListingUrl) {
     const { pivotStart, pivotEnd, query } = request.userData;
     const data = await getRequest(request.url);
     let listingCount = data.explore_tabs[0].home_tab_metadata.listings_count;
@@ -212,9 +227,6 @@ async function pivot(input, request, requestQueue, getRequest) {
             maxPrice: intervalMiddle,
             limit: MIN_LIMIT,
             offset: 0,
-            checkIn,
-            checkOut,
-            currency,
         });
         log.debug(`First half url: ${firstHalfUrl}`);
 
@@ -234,9 +246,6 @@ async function pivot(input, request, requestQueue, getRequest) {
             maxPrice: pivotEnd,
             limit: MIN_LIMIT,
             offset: 0,
-            checkIn,
-            checkOut,
-            currency,
         });
         log.debug(`Second half url: ${secondHalfUrl}`);
 
@@ -250,10 +259,14 @@ async function pivot(input, request, requestQueue, getRequest) {
             } });
     } else {
         log.info(`Getting listings for start: ${pivotStart} end: ${pivotEnd}`);
-        await getListingsSection({ minPrice: pivotStart, maxPrice: pivotEnd, checkIn, checkOut, currency }, query, requestQueue, getRequest);
+        await getListingsSection({ minPrice: pivotStart, maxPrice: pivotEnd }, query, requestQueue, getRequest, buildListingUrl);
     }
 }
 
+/**
+ * @param {string} listingId
+ * @param {(...args: any) => Promise<any>} getRequest
+ */
 async function getReviews(listingId, getRequest) {
     const results = [];
     const pageSize = MAX_LIMIT;
@@ -307,6 +320,8 @@ function validateInput(input) {
     validate(input.maxPrice, 'number');
     validate(input.maxReviews, 'number');
     validate(input.includeReviews, 'boolean');
+    validate(input.includeCalendar, 'boolean');
+    validate(input.debugLog, 'boolean');
 
     // check date
     checkDate(input.checkIn);
@@ -330,6 +345,11 @@ function validateInput(input) {
     }
 }
 
+/**
+ * Keeps count state in the KV
+ *
+ * @param {number} maxListings
+ */
 async function isMaxListing(maxListings) {
     const state = (await Apify.getValue('STATE')) || { count: 0 };
 

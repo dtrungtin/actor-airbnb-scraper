@@ -152,7 +152,7 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
 
     const pointMap = new Map();
     for (const polygon of filteredPolygons) {
-        log.info(polygon.display_name);
+        log.debug('Polygon', { polygon });
         for (const pip of findPointsInPolygon(polygon, distanceKilometers)) {
             const lon = meterPrecision(pip.lon);
             const lat = meterPrecision(pip.lat);
@@ -195,7 +195,12 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
             promises.length = 0;
         }
     }
-    await Promise.all(promises);
+
+    if (promises.length) {
+        log.info('Waiting for geopoints to finish');
+        await Promise.all(promises);
+        log.info('Done waiting, continuing scrape');
+    }
 
     return dataset;
 }
