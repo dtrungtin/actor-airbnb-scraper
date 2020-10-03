@@ -88,7 +88,7 @@ function getPolygons(geoJson, distanceKilometers) {
     return coordinates.map((coords) => turf.polygon(coords));
 }
 
-function findPointsInPolygon(location, distanceKilometers) {
+function findPointsInPolygon(location, distanceKilometers, limitPoints) {
     const { geojson } = location;
     const { coordinates } = geojson;
     if (!coordinates) return [];
@@ -97,17 +97,21 @@ function findPointsInPolygon(location, distanceKilometers) {
     if (geojson.type === GEO_TYPES.POINT) {
         const [lon, lat] = coordinates;
         points.push({ lon, lat });
+        limitPoints--;
     }
     if (geojson.type === GEO_TYPES.LINE_STRING) {
         const linePoints = [coordinates[0], coordinates[coordinates.length - 1]];
-        linePoints.forEach((point) => {
+        for (const point of linePoints) {
+            if (limitPoints-- <= 0) {
+                break;
+            }
             const [lon, lat] = point;
             points.push({ lon, lat });
-        });
+        }
     }
     try {
         const polygons = getPolygons(geojson, distanceKilometers);
-        polygons.forEach((polygon) => {
+        for (const polygon of polygons) {
             const bbox = turf.bbox(polygon);
             const options = {
                 units: 'kilometers',
@@ -117,11 +121,15 @@ function findPointsInPolygon(location, distanceKilometers) {
             const distance = geojson.type === GEO_TYPES.POINT ? distanceKilometers / 2 : distanceKilometers;
             const pointGrid = turf.pointGrid(bbox, distance, options);
             // http://geojson.io is nice tool to check found points on map
-            pointGrid.features.forEach((feature) => {
+            for (const feature of pointGrid.features) {
+                if (limitPoints-- <= 0) {
+                    break;
+                }
+
                 const [lon, lat] = feature.geometry.coordinates;
                 points.push({ lon, lat });
-            });
-        });
+            }
+        }
     } catch (e) {
         log.exception(e, 'Failed to create point grid');
     }
@@ -152,8 +160,11 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
 
     const pointMap = new Map();
     for (const polygon of filteredPolygons) {
-        log.debug('Polygon', { polygon });
-        for (const pip of findPointsInPolygon(polygon, distanceKilometers)) {
+        log.info('Finding points in polygon, (might take a while)', { place_id: polygon.place_id });
+        const pips = findPointsInPolygon(polygon, distanceKilometers, limitPoints);
+        log.info(`${pips.length} points in polygon`);
+
+        for (const pip of pips) {
             const lon = meterPrecision(pip.lon);
             const lat = meterPrecision(pip.lat);
             // deduplicate really near points
@@ -180,9 +191,9 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     };
 
     const promises = [];
-    log.debug(`Points found ${limitPoints} / ${points.length}`);
+    log.debug(`Points found ${points.length}`);
 
-    for (const point of points.slice(0, limitPoints)) {
+    for (const point of points) {
         promises.push(Promise.race([
             sleep(timeoutMs),
             reversePoint(point),
