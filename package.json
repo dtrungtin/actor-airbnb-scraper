@@ -1,17 +1,21 @@
 {
 	"name": "airbnb-scraper",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "This is a boilerplate of an Apify actor.",
 	"main": "main.js",
 	"dependencies": {
-		"apify": "^0.20.2",
+		"apify": "^0.21.6",
 		"camelcase-keys-recursive": "^0.8.3",
-		"moment": "^2.24.0",
+		"moment": "^2.29.0",
+		"lodash.get": "^4.4.2",
 		"@turf/turf": "^5.1.6"
 	},
 	"devDependencies": {
-		"@apify/eslint-config": "0.0.3",
-		"eslint": "^6.8.0"
+		"@apify/eslint-config": "^0.1.2",
+		"@typescript-eslint/eslint-plugin": "^4.3.0",
+		"@types/lodash.get": "^4.4.6",
+		"typescript": "^4.0.3",
+		"eslint": "^7.9.0"
 	},
 	"scripts": {
 		"start": "node main.js",
@@ -19,7 +23,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": ""
+		"url": "https://github.com/dtrungtin/actor-airbnb-scraper"
 	},
 	"author": "",
 	"license": "ISC",

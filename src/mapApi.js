@@ -2,6 +2,7 @@ const Apify = require('apify');
 const turf = require('@turf/turf');
 
 const { DISTANCE_METERS } = require('./constants');
+const { meterPrecision } = require('./tools');
 
 const { log, sleep } = Apify.utils;
 
@@ -84,10 +85,10 @@ function getPolygons(geoJson, distanceKilometers) {
         return [turf.circle(midPoint, length, options)];
     }
 
-    return coordinates.map(coords => turf.polygon(coords));
+    return coordinates.map((coords) => turf.polygon(coords));
 }
 
-async function findPointsInPolygon(location, distanceKilometers) {
+function findPointsInPolygon(location, distanceKilometers, limitPoints) {
     const { geojson } = location;
     const { coordinates } = geojson;
     if (!coordinates) return [];
@@ -96,17 +97,21 @@ async function findPointsInPolygon(location, distanceKilometers) {
     if (geojson.type === GEO_TYPES.POINT) {
         const [lon, lat] = coordinates;
         points.push({ lon, lat });
+        limitPoints--;
     }
     if (geojson.type === GEO_TYPES.LINE_STRING) {
         const linePoints = [coordinates[0], coordinates[coordinates.length - 1]];
-        linePoints.forEach((point) => {
+        for (const point of linePoints) {
+            if (limitPoints-- <= 0) {
+                break;
+            }
             const [lon, lat] = point;
             points.push({ lon, lat });
-        });
+        }
     }
     try {
         const polygons = getPolygons(geojson, distanceKilometers);
-        polygons.forEach((polygon) => {
+        for (const polygon of polygons) {
             const bbox = turf.bbox(polygon);
             const options = {
                 units: 'kilometers',
@@ -116,11 +121,15 @@ async function findPointsInPolygon(location, distanceKilometers) {
             const distance = geojson.type === GEO_TYPES.POINT ? distanceKilometers / 2 : distanceKilometers;
             const pointGrid = turf.pointGrid(bbox, distance, options);
             // http://geojson.io is nice tool to check found points on map
-            pointGrid.features.forEach((feature) => {
+            for (const feature of pointGrid.features) {
+                if (limitPoints-- <= 0) {
+                    break;
+                }
+
                 const [lon, lat] = feature.geometry.coordinates;
                 points.push({ lon, lat });
-            });
-        });
+            }
+        }
     } catch (e) {
         log.exception(e, 'Failed to create point grid');
     }
@@ -128,7 +137,7 @@ async function findPointsInPolygon(location, distanceKilometers) {
     return points;
 }
 
-async function cityToAreas(cityQuery, getRequest) {
+async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {
     const distanceMeters = DISTANCE_METERS;
     const params = { query: cityQuery };
     const polygons = await findPolygons(params, getRequest);
@@ -149,14 +158,29 @@ async function cityToAreas(cityQuery, getRequest) {
     log.info(`Got ${filteredPolygons.length} filtered polygons`);
     const distanceKilometers = distanceMeters / 1000;
 
-    const points = [];
-    for (const polygon of filteredPolygons) {
-        log.info(polygon.display_name);
-        points.push(...await findPointsInPolygon(polygon, distanceKilometers));
+    const pointMap = new Map(await Apify.getValue('POINTS'));
+
+    if (!pointMap.size) {
+        for (const polygon of filteredPolygons) {
+            log.info('Finding points in polygon, (might take a while)', { place_id: polygon.place_id });
+            const pips = findPointsInPolygon(polygon, distanceKilometers, limitPoints);
+            log.info(`${pips.length} points in polygon`);
+
+            for (const pip of pips) {
+                const lon = meterPrecision(pip.lon);
+                const lat = meterPrecision(pip.lat);
+                // deduplicate really near points
+                pointMap.set(`${lon},${lat}`, { lon, lat });
+            }
+        }
+
+        await Apify.setValue('POINTS', [...pointMap.entries()]);
     }
 
+    const points = [...pointMap.values()];
+
     // Debug
-    const geoPoints = points.map(point => turf.point([point.lon, point.lat]));
+    const geoPoints = points.map(({ lon, lat }) => turf.point([lon, lat]));
     const collection = turf.featureCollection(geoPoints);
     await Apify.setValue('COORDS', collection);
 
@@ -165,21 +189,34 @@ async function cityToAreas(cityQuery, getRequest) {
         const pointInfo = await reverse(point, getRequest);
         // eslint-disable-next-line camelcase
         const { display_name } = pointInfo;
-        log.debug(display_name);
+        log.debug(display_name, pointInfo);
 
-        await dataset.push(pointInfo.boundingbox);
-        await sleep(250);
+        dataset.push(pointInfo.boundingbox);
+        await sleep(200);
     };
 
-    let promises = [];
+    const promises = [];
+    log.debug(`Points found ${points.length}`);
+
     for (const point of points) {
-        promises.push(reversePoint(point));
+        promises.push(Promise.race([
+            sleep(timeoutMs),
+            reversePoint(point),
+        ]));
+
         if (promises.length >= MAX_REVERSE_API_CONCURRENCY) {
+            log.debug('Over reverse api concurrency, waiting');
             await Promise.all(promises);
-            promises = [];
+            log.debug('Continuing');
+            promises.length = 0;
         }
     }
-    await Promise.all(promises);
+
+    if (promises.length) {
+        log.info('Waiting for geopoints to finish');
+        await Promise.all(promises);
+        log.info('Done waiting, continuing scrape');
+    }
 
     return dataset;
 }

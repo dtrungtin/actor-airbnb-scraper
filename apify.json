@@ -2,6 +2,8 @@
 	"name": "airbnb-scraper",
 	"version": "0.0",
 	"buildTag": "latest",
-	"env": null,
+	"env": {
+		"API_KEY": "d306zoyjsyarp7ifhu67rjxn52tv0t20"
+	},
 	"template": "puppeteer_crawler"
 }

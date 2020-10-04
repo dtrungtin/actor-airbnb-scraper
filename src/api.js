@@ -1,62 +1,82 @@
 const querystring = require('querystring');
+const moment = require('moment');
 const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
 
-function buildListingUrl(location, priceMin = DEFAULT_MIN_PRICE, priceMax = DEFAULT_MAX_PRICE, limit = 20, offset = 0, checkIn, checkOut) {
-    let queryString = {};
+/**
+ * @param {{
+ *   checkIn: string,
+ *   checkOut: string,
+ *   currency: string,
+ * }} params
+ */
+const getBuildListingUrl = ({
+    checkIn,
+    checkOut,
+    currency = 'USD',
+}) => {
+    /**
+     * @param {{
+     * location: (number[] | string),
+     * minPrice: number,
+     * maxPrice: number,
+     * limit: number,
+     * offset: number,
+     * }} params
+     */
+    const fn = ({
+        location,
+        minPrice = DEFAULT_MIN_PRICE,
+        maxPrice = DEFAULT_MAX_PRICE,
+        limit = 20,
+        offset = 0,
+    }) => {
+        const url = new URL('https://api.airbnb.com/v2/explore_tabs');
 
-    if (Array.isArray(location)) {
-        // eslint-disable-next-line camelcase
-        const sw_lat = location[0];
-        // eslint-disable-next-line camelcase
-        const sw_lng = location[2];
-        // eslint-disable-next-line camelcase
-        const ne_lat = location[1];
-        // eslint-disable-next-line camelcase
-        const ne_lng = location[3];
+        if (Array.isArray(location)) {
+            /* eslint-disable camelcase */
+            const sw_lat = location[0];
+            const sw_lng = location[2];
+            const ne_lat = location[1];
+            const ne_lng = location[3];
 
-        queryString = {
-            search_by_map: true,
-            ne_lat,
-            ne_lng,
-            sw_lat,
-            sw_lng,
-            price_min: priceMin,
-            price_max: priceMax,
-            items_per_grid: limit,
-            items_offset: offset,
-            'refinement_paths[]': '/homes',
-        };
-    } else {
-        queryString = {
-            query: location,
-            price_min: priceMin,
-            price_max: priceMax,
-            items_per_grid: limit,
-            items_offset: offset,
-            'refinement_paths[]': '/homes',
-        };
-    }
+            url.searchParams.set('search_by_map', 'true');
+            url.searchParams.set('ne_lat', `${ne_lat}`);
+            url.searchParams.set('ne_lng', `${ne_lng}`);
+            url.searchParams.set('sw_lat', `${sw_lat}`);
+            url.searchParams.set('sw_lng', `${sw_lng}`);
+        } else {
+            url.searchParams.set('query', location);
+        }
 
-    queryString.key = 'd306zoyjsyarp7ifhu67rjxn52tv0t20';
+        if (typeof minPrice === 'number' && minPrice < maxPrice) {
+            url.searchParams.set('price_min', `${minPrice}`);
+        }
 
-    if (checkIn) {
-        queryString.checkin = checkIn;
-    }
+        if (typeof maxPrice === 'number' && maxPrice > minPrice) {
+            url.searchParams.set('price_max', `${maxPrice}`);
+        }
 
-    if (checkOut) {
-        queryString.checkout = checkOut;
-    }
+        url.searchParams.set('items_per_grid', `${limit}`);
+        url.searchParams.set('items_offset', `${offset}`);
+        url.searchParams.set('refinement_paths[]', '/homes');
+        url.searchParams.set('key', process.env.API_KEY);
+        url.searchParams.set('currency', currency);
 
-    return `https://api.airbnb.com/v2/explore_tabs?${querystring.stringify(queryString)}`;
-}
+        if (checkIn) {
+            url.searchParams.set('checkin', checkIn);
+        }
 
-function getHomeListings(location, getRequest, priceMin = DEFAULT_MIN_PRICE, priceMax = DEFAULT_MAX_PRICE,
-    limit = 20, offset = 0, checkIn, checkOut) {
-    const url = buildListingUrl(location, priceMin, priceMax, limit, offset, checkIn, checkOut);
-    return getRequest(url);
-}
+        if (checkOut) {
+            url.searchParams.set('checkout', checkOut);
+        }
 
-function callForReviews(listingId, getRequest, limit = 50, offset = 0) {
+        return url.toString();
+    };
+
+    return fn;
+};
+
+function callForReviews(listingId, limit = 50, offset = 0) {
     const queryString = {
         _order: 'language_country',
         _limit: limit,
@@ -65,13 +85,26 @@ function callForReviews(listingId, getRequest, limit = 50, offset = 0) {
         role: 'all',
         listing_id: listingId,
     };
-    return getRequest(
-        `https://api.airbnb.com/v2/reviews?${querystring.stringify(queryString)}`,
-    );
+    return `https://api.airbnb.com/v2/reviews?${querystring.stringify(queryString)}`;
+}
+
+/**
+ * @param {string} listingId
+ * @param {string} checkIn
+ */
+function calendarMonths(listingId, checkIn) {
+    const date = moment(checkIn);
+
+    return `https://api.airbnb.com/v2/calendar_months?${querystring.stringify({
+        listing_id: listingId,
+        month: date.get('month') + 1,
+        year: date.get('year'),
+        count: 1,
+    })}`;
 }
 
 module.exports = {
-    getHomeListings,
     callForReviews,
-    buildListingUrl,
+    getBuildListingUrl,
+    calendarMonths,
 };

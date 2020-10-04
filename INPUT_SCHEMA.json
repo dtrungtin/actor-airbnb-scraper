@@ -16,7 +16,7 @@
       "type": "array",
       "description": "Urls of Airbnb details (not search urls), when set the actor will ignore locationQuery and will return results only for these listings",
       "editor": "requestListSources"
-    },    
+    },
     "simple": {
       "title": "Extract main listing information only (no detail)",
       "type": "boolean",
@@ -33,19 +33,40 @@
       "title": "Maximum reviews",
       "type": "integer",
       "description": "Amount of reviews to be scraped for each listing.",
-      "default": 1000
+      "default": 1000,
+      "example": 1000
+    },
+    "checkIn": {
+      "title": "Checkin date",
+      "type": "string",
+      "description": "First day of stay. Format: YYYY-MM-DD",
+      "editor": "textfield"
+    },
+    "checkOut": {
+      "title": "Checkout date",
+      "type": "string",
+      "description": "Last day of stay. Format: YYYY-MM-DD",
+      "editor": "textfield"
     },
     "minPrice": {
       "title": "Minimum price",
       "type": "integer",
       "description": "Sets filter min_price (per night) to the search query.",
-      "default": 0
+      "default": 0,
+      "example": 100
     },
     "maxPrice": {
       "title": "Maximum price",
       "type": "integer",
       "description": "Sets filter max_price (per night) to the search query.",
-      "default": 100000
+      "default": 100000,
+      "example": 100000
+    },
+    "includeCalendar": {
+      "title": "Include calendar",
+      "type": "boolean",
+      "description": "If checked, includes the available range of days",
+      "default": false
     },
     "currency": {
       "title": "Currency",
@@ -353,18 +374,6 @@
         "ZWR"
       ],
       "default": "CZK"
-    },    
-    "checkIn": {
-      "title": "Checkin date",
-      "type": "string",
-      "description": "First day of stay. Format: YYYY-MM-DD",
-      "editor": "textfield"
-    },
-    "checkOut": {
-      "title": "Checkout date",
-      "type": "string",
-      "description": "Last day of stay. Format: YYYY-MM-DD",
-      "editor": "textfield"
     },
     "proxyConfiguration": {
       "title": "Proxy configuration",
@@ -379,12 +388,42 @@
       },
       "editor": "proxy"
     },
+    "maxListings": {
+      "title": "Max listings",
+      "type": "integer",
+      "description": "Limit the amount of results you want. Omit this setting for no limit",
+      "prefill": 0,
+      "example": 10
+    },
     "maxConcurrency": {
       "title": "Max concurrency",
       "type": "integer",
       "description": "Defines how many pages can be processed by the scraper in parallel. The scraper automatically increases and decreases concurrency based on available system resources. Use this option to set a hard limit.",
       "minimum": 1,
-      "default": 50
+      "default": 50,
+      "prefill": 50
+    },
+    "limitPoints": {
+      "title": "Limit points",
+      "type": "integer",
+      "description": "Limits the number of geo points returned by the reverse API. The higher the number, the longer it takes. There's no upper limit",
+      "minimum": 1,
+      "default": 100,
+      "prefill": 100
+    },
+    "timeoutMs": {
+      "title": "Timeout milliseconds",
+      "type": "integer",
+      "description": "Override the default 60s (60.000ms) timeout when not using startUrls",
+      "minimum": 60000,
+      "default": 60000,
+      "prefill": 60000
+    },
+    "debugLog": {
+      "title": "Debug Log",
+      "type": "boolean",
+      "description": "Shows additional debugging information",
+      "default": true
     }
   },
   "required": [
