@@ -384,7 +384,7 @@
       "type": "object",
       "description": "Use Apify Proxy or your custom Proxy",
       "prefill": {
-        "useApifyProxy": true,
+        "useApifyProxy": true
       },
       "default": {
         "useApifyProxy": true
