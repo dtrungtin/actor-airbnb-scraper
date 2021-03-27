@@ -1,6 +1,6 @@
 {
   "title": "Airbnb Scrapper input",
-  "description": "To unleashed the full power of the scrapper/API use the options bellow!",
+  "description": "To unleashed the full power of the scraper/API use the options bellow!",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
@@ -9,6 +9,7 @@
       "type": "string",
       "description": "Location name as you would enter to Airbnb search. Actor takes the first result as desired location.",
       "default": "Sacramento",
+      "prefill": "Sacramento",
       "editor": "textfield"
     },
     "startUrls": {
@@ -33,19 +34,21 @@
       "title": "Maximum reviews",
       "type": "integer",
       "description": "Amount of reviews to be scraped for each listing.",
-      "default": 1000,
-      "example": 1000
+      "default": 10,
+      "example": 10
     },
     "checkIn": {
       "title": "Checkin date",
       "type": "string",
       "description": "First day of stay. Format: YYYY-MM-DD",
+      "example": "YYYY-MM-DD",
       "editor": "textfield"
     },
     "checkOut": {
       "title": "Checkout date",
       "type": "string",
       "description": "Last day of stay. Format: YYYY-MM-DD",
+      "example": "YYYY-MM-DD",
       "editor": "textfield"
     },
     "minPrice": {
@@ -373,15 +376,15 @@
         "ZWN",
         "ZWR"
       ],
-      "default": "CZK"
+      "default": "USD",
+      "prefill": "USD"
     },
     "proxyConfiguration": {
       "title": "Proxy configuration",
       "type": "object",
-      "description": "Optionally use Apify Proxy",
+      "description": "Use Apify Proxy or your custom Proxy",
       "prefill": {
         "useApifyProxy": true,
-        "apifyProxyGroups": ["SHADER"]
       },
       "default": {
         "useApifyProxy": true
@@ -392,8 +395,9 @@
       "title": "Max listings",
       "type": "integer",
       "description": "Limit the amount of results you want. Omit this setting for no limit",
-      "prefill": 0,
-      "example": 10
+      "prefill": 10,
+      "example": 10,
+      "default": 10
     },
     "maxConcurrency": {
       "title": "Max concurrency",
@@ -423,7 +427,7 @@
       "title": "Debug Log",
       "type": "boolean",
       "description": "Shows additional debugging information",
-      "default": true
+      "default": false
     }
   },
   "required": [
