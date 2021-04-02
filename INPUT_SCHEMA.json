@@ -396,8 +396,7 @@
       "type": "integer",
       "description": "Limit the amount of results you want. Omit this setting for no limit",
       "prefill": 10,
-      "example": 10,
-      "default": 10
+      "example": 10
     },
     "maxConcurrency": {
       "title": "Max concurrency",
