@@ -214,7 +214,7 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
 
     log.debug(`Listings found: ${listingCount}`);
 
-    if (listingCount === 0) {
+    if (!listingCount || listingCount === 0) {
         return;
     }
 
