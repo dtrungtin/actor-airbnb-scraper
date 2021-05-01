@@ -24,6 +24,7 @@ Apify.main(async () => {
         startUrls,
         proxyConfiguration,
         includeReviews = true,
+        maxReviews = 10,
         maxListings,
         includeCalendar = false,
         debugLog = false,
@@ -47,7 +48,7 @@ Apify.main(async () => {
     /**
      * @param {Apify.Session | null} session
      */
-    const getRequest = (session) => async (url, opts = {}) => {
+    const getRequest = session => async (url, opts = {}) => {
         const getData = async (attempt = 0) => {
             let response;
 
@@ -100,14 +101,14 @@ Apify.main(async () => {
     const requestQueue = await Apify.openRequestQueue();
 
     if (startUrls && startUrls.length > 0) {
-        log.info(`"startUrls" is being used, the search will be ignored`);
+        log.info('"startUrls" is being used, the search will be ignored');
 
         const requestList = await Apify.openRequestList('STARTURLS', startUrls);
         let count = 0;
 
-        let request;
+        let request = await requestList.fetchNextRequest();
 
-        while (request = await requestList.fetchNextRequest()) {
+        while (request) {
             if (!request.url.includes('airbnb.com/rooms')) {
                 throw new Error(`Provided urls must be AirBnB room urls, got ${request.url}`);
             }
@@ -120,6 +121,8 @@ Apify.main(async () => {
             if (!rq.wasAlreadyPresent) {
                 count++;
             }
+
+            request = await requestList.fetchNextRequest();
         }
 
         log.info(`Starting with ${count} urls`);
@@ -162,7 +165,7 @@ Apify.main(async () => {
 
                     if (includeReviews) {
                         try {
-                            detail.reviews = await getReviews(request.userData.id, doReq);
+                            detail.reviews = await getReviews(request.userData.id, doReq, maxReviews);
                         } catch (e) {
                             log.exception(e, 'Could not get reviews');
                         }
@@ -182,7 +185,7 @@ Apify.main(async () => {
                             lng,
                         },
                         reviews,
-                        pricing: {}
+                        pricing: {},
                     };
 
                     if (request.userData.pricing && request.userData.pricing.rate) {

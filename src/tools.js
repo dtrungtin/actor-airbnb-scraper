@@ -266,22 +266,33 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
 /**
  * @param {string} listingId
  * @param {(...args: any) => Promise<any>} getRequest
+ * @param {string} maxReviews
  */
-async function getReviews(listingId, getRequest) {
+async function getReviews(listingId, getRequest, maxReviews) {
     const results = [];
     const pageSize = MAX_LIMIT;
     let offset = 0;
     const req = () => getRequest(callForReviews(listingId, pageSize, offset));
     const data = await req();
-    data.reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
+    data.reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
+
+    if (results.length >= maxReviews) {
+        return results.slice(0, maxReviews);
+    }
+
     const numberOfHomes = data.metadata.reviews_count;
     const numberOfFetches = numberOfHomes / pageSize;
 
     for (let i = 0; i < numberOfFetches; i++) {
         offset += pageSize;
         await randomDelay();
-        (await req()).reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
+        (await req()).reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
+
+        if (results.length >= maxReviews) {
+            return results.slice(0, maxReviews);
+        }
     }
+
     return results;
 }
 
