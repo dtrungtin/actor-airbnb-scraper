@@ -4,11 +4,12 @@
 	"description": "This is a boilerplate of an Apify actor.",
 	"main": "main.js",
 	"dependencies": {
+		"@turf/turf": "^5.1.6",
 		"apify": "^0.21.6",
 		"camelcase-keys-recursive": "^0.8.3",
-		"moment": "^2.29.0",
+		"csvtojson": "^2.0.10",
 		"lodash.get": "^4.4.2",
-		"@turf/turf": "^5.1.6"
+		"moment": "^2.29.0"
 	},
 	"devDependencies": {
 		"@apify/eslint-config": "^0.1.2",

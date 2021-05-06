@@ -1,5 +1,6 @@
 const Apify = require('apify');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
+const csvToJson = require('csvtojson');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
 const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
@@ -103,7 +104,27 @@ Apify.main(async () => {
     if (startUrls && startUrls.length > 0) {
         log.info('"startUrls" is being used, the search will be ignored');
 
-        const requestList = await Apify.openRequestList('STARTURLS', startUrls);
+        const startUrlList = [];
+        for (let index = 0; index < startUrls.length; index++) {
+            const item = startUrls[index];
+            if (item.requestsFromUrl) {
+                let sourceUrl = item.requestsFromUrl;
+                if (item.requestsFromUrl.includes('/spreadsheets/d/') && !item.requestsFromUrl.includes('/gviz/tq?tqx=out:csv')) {
+                    const [googlesheetLink] = item.requestsFromUrl.match(/.*\/spreadsheets\/d\/.*\//);
+                    sourceUrl = `${googlesheetLink}gviz/tq?tqx=out:csv`;
+                }
+                const response = await requestAsBrowser({ url: sourceUrl, encoding: 'utf8' });
+                const rows = await csvToJson({ noheader: true }).fromString(response.body);
+
+                for (const row of rows) {
+                    startUrlList.push({ url: row.field1 });
+                }
+            } else {
+                startUrlList.push(item);
+            }
+        }
+
+        const requestList = await Apify.openRequestList('STARTURLS', startUrlList);
         let count = 0;
 
         let request = await requestList.fetchNextRequest();
