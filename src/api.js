@@ -103,8 +103,25 @@ function calendarMonths(listingId, checkIn) {
     })}`;
 }
 
+/**
+ * @param {string} listingId
+ * @param {string} checkIn
+ * @param {string} checkOut
+ */
+function bookingDetailsUrl(listingId, checkIn, checkOut) {
+    const queryString = {
+        check_in: checkIn,
+        check_out: checkOut,
+        _format: 'for_web_with_date',
+        listing_id: listingId,
+    };
+
+    return `https://api.airbnb.com/v2/pdp_listing_booking_details?${querystring.stringify(queryString)}`;
+}
+
 module.exports = {
     callForReviews,
     getBuildListingUrl,
     calendarMonths,
+    bookingDetailsUrl,
 };

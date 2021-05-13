@@ -1,10 +1,11 @@
+/* eslint-disable camelcase */
 const Apify = require('apify');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const csvToJson = require('csvtojson');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
 const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
-const { getBuildListingUrl, calendarMonths } = require('./api');
+const { getBuildListingUrl, calendarMonths, bookingDetailsUrl } = require('./api');
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
 
@@ -211,6 +212,40 @@ Apify.main(async () => {
 
                     if (request.userData.pricing && request.userData.pricing.rate) {
                         simpleResult.pricing = request.userData.pricing;
+                    } else {
+                        try {
+                            const { originalUrl } = request.userData;
+                            const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
+                                || checkIn || null;
+                            const checkOutDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_out') : false)
+                                || checkOut || null;
+
+                            if (checkInDate && checkOutDate) {
+                                const { pdp_listing_booking_details } = await doReq(bookingDetailsUrl(detail.id, checkInDate, checkOutDate));
+                                const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
+                                const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
+
+                                if (available) {
+                                    simpleResult.pricing = {
+                                        rate: {
+                                            amount,
+                                            amount_formatted,
+                                            currency: base_price_breakdown[0].currency,
+                                            is_micros_accuracy,
+                                        },
+                                        rate_type,
+                                        rate_with_service_fee: {
+                                            amount,
+                                            amount_formatted,
+                                            currency: base_price_breakdown[0].currency,
+                                            is_micros_accuracy,
+                                        },
+                                    };
+                                }
+                            }
+                        } catch (e) {
+                            log.exception(e, 'Error while retrieving booking details', { url: request.url, id: detail.id });
+                        }
                     }
 
                     if (includeCalendar) {
