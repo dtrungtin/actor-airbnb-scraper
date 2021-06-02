@@ -14,3 +14,7 @@
 
 ## 2021-03-27
 - changed input schema to be more UX friendly (set maxItems and maxRevies, set default search term, switched off DEBUG log on default, used USD as default currency)
+
+## 2021-06-01
+- fixed max item field to work properly
+- fixed external source of input (CSV, google sheets)
