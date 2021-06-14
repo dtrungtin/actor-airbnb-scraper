@@ -373,7 +373,7 @@ async function isMaxListing(maxListings) {
 
             state.count++;
 
-            if (maxListings && state.count >= maxListings) {
+            if (maxListings && state.count > maxListings) {
                 log.info(`Got ${state.count} items, terminating crawl`);
                 return true;
             }

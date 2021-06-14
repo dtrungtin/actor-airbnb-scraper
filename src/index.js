@@ -153,16 +153,19 @@ Apify.main(async () => {
 
         await addListings({ minPrice, maxPrice }, locationQuery, requestQueue, buildListingUrl);
 
-        const doReq = getRequest(null);
-        const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrl);
-        log.info(`Location query: ${cityQuery}`);
-        const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
+        // Divide location into smaller areas to search more results
+        if (maxListings && maxListings > 1000) {
+            const doReq = getRequest(null);
+            const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrl);
+            log.info(`Location query: ${cityQuery}`);
+            const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
 
-        if (areaList.length === 0) {
-            log.info('Cannot divide location query into smaller areas!');
-        } else {
-            for (const area of areaList) {
-                await addListings({ minPrice, maxPrice }, area, requestQueue, buildListingUrl);
+            if (areaList.length === 0) {
+                log.info('Cannot divide location query into smaller areas!');
+            } else {
+                for (const area of areaList) {
+                    await addListings({ minPrice, maxPrice }, area, requestQueue, buildListingUrl);
+                }
             }
         }
     }
@@ -262,25 +265,27 @@ Apify.main(async () => {
                         }
                     }
 
-                    if (simple) {
-                        await Apify.pushData(simpleResult);
+                    const isAbort = abortOnMaxItems();
+
+                    if (!isAbort) {
+                        if (simple) {
+                            await Apify.pushData(simpleResult);
+                        } else {
+                            const newResult = {
+                                ...simpleResult,
+                                ...result,
+                                locationTitle: undefined,
+                                starRating: undefined,
+                                guestLabel: undefined,
+                                p3SummaryTitle: undefined,
+                                lat: undefined,
+                                lng: undefined,
+                                roomAndPropertyType: undefined,
+                            };
+
+                            await Apify.pushData(newResult);
+                        }
                     } else {
-                        const newResult = {
-                            ...simpleResult,
-                            ...result,
-                            locationTitle: undefined,
-                            starRating: undefined,
-                            guestLabel: undefined,
-                            p3SummaryTitle: undefined,
-                            lat: undefined,
-                            lng: undefined,
-                            roomAndPropertyType: undefined,
-                        };
-
-                        await Apify.pushData(newResult);
-                    }
-
-                    if (abortOnMaxItems()) {
                         await autoscaledPool.abort();
                     }
                 } catch (e) {
