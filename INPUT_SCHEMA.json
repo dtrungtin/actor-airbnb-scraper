@@ -431,6 +431,7 @@
   },
   "required": [
     "includeReviews",
-    "currency"
+    "currency",
+    "proxyConfiguration"
   ]
 }

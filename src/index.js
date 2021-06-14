@@ -41,6 +41,10 @@ Apify.main(async () => {
     const proxy = await Apify.createProxyConfiguration({
         ...proxyConfiguration,
     });
+    // CHECKS
+    if (Apify.isAtHome() && !proxy) {
+        throw new Error('WRONG INPUT: This actor must use Apify proxy or custom proxies when running on Apify platform!');
+    }
 
     const { abortOnMaxItems, persistState } = await isMaxListing(maxListings);
     Apify.events.on('persistState', persistState);
