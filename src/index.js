@@ -220,6 +220,7 @@ Apify.main(async () => {
                     if (request.userData.pricing && request.userData.pricing.rate) {
                         simpleResult.pricing = request.userData.pricing;
                     } else {
+                        let pricingDetailsUrl = null;
                         try {
                             const { originalUrl } = request.userData;
                             const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
@@ -228,9 +229,9 @@ Apify.main(async () => {
                                 || checkOut || null;
 
                             if (checkInDate && checkOutDate) {
-                                const bookingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
-                                log.info(`Requesting booking details from ${checkInDate} to ${checkInDate}`, { url: bookingDetailsUrl, id: detail.id });
-                                const { pdp_listing_booking_details } = await doReq(bookingDetailsUrl);
+                                pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
+                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`, { url: pricingDetailsUrl, id: detail.id });
+                                const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
                                 const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
 
@@ -253,7 +254,7 @@ Apify.main(async () => {
                                 }
                             }
                         } catch (e) {
-                            log.exception(e, 'Error while retrieving booking details', { url: request.url, id: detail.id });
+                            log.exception(e, 'Error while retrieving pricing details', { url: pricingDetailsUrl, id: detail.id });
                         }
                     }
 
