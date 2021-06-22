@@ -228,8 +228,9 @@ Apify.main(async () => {
                                 || checkOut || null;
 
                             if (checkInDate && checkOutDate) {
-                                log.info(`Requesting booking details from ${checkInDate} to ${checkInDate}`, { url: request.url, id: detail.id });
-                                const { pdp_listing_booking_details } = await doReq(bookingDetailsUrl(detail.id, checkInDate, checkOutDate));
+                                const bookingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
+                                log.info(`Requesting booking details from ${checkInDate} to ${checkInDate}`, { url: bookingDetailsUrl, id: detail.id });
+                                const { pdp_listing_booking_details } = await doReq(bookingDetailsUrl);
                                 const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
 
