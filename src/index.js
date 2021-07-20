@@ -179,7 +179,7 @@ Apify.main(async () => {
         maxConcurrency,
         handleRequestTimeoutSecs: 1200,
         useSessionPool: true,
-        handleRequestFunction: async ({ request, session }) => {
+        handleRequestFunction: async ({ request, session, crawler }) => {
             const { isHomeDetail, isPivoting } = request.userData;
             const doReq = getRequest(session);
 
@@ -293,7 +293,7 @@ Apify.main(async () => {
                             await Apify.pushData(newResult);
                         }
                     } else {
-                        process.exit(0);
+                        await crawler.autoscaledPool.abort();
                     }
                 } catch (e) {
                     log.exception(e, 'Could not get detail for home', { url: request.url });
