@@ -158,7 +158,7 @@ Apify.main(async () => {
         await addListings({ minPrice, maxPrice }, locationQuery, requestQueue, buildListingUrl);
 
         // Divide location into smaller areas to search more results
-        if (maxListings && maxListings > 1000) {
+        if (!maxListings || maxListings > 1000) {
             const doReq = getRequest(null);
             const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrl);
             log.info(`Location query: ${cityQuery}`);
