@@ -5,7 +5,7 @@ const csvToJson = require('csvtojson');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
 const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
-const { getBuildListingUrl, calendarMonths, bookingDetailsUrl } = require('./api');
+const { getBuildListingUrl, calendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
 
@@ -29,6 +29,7 @@ Apify.main(async () => {
         maxReviews = 10,
         maxListings,
         includeCalendar = false,
+        addMoreHostInfo = false,
         debugLog = false,
         limitPoints = 1000,
         timeoutMs = 60000,
@@ -98,7 +99,12 @@ Apify.main(async () => {
                 return getData(attempt + 1);
             }
 
-            return JSON.parse(response.body);
+            try {
+                return JSON.parse(response.body);
+            } catch (e) {
+                await sleep(5000);
+                return getData(attempt + 1);
+            }
         };
 
         return getData();
@@ -269,6 +275,17 @@ Apify.main(async () => {
                             simpleResult.calendar = calendar_months[0].days;
                         } catch (e) {
                             log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
+                        }
+                    }
+
+                    if (addMoreHostInfo && result.primaryHost) {
+                        try {
+                            const { user: { listings_count, total_listings_count } } = await doReq(callForHostInfo(result.primaryHost.id));
+                            result.primaryHost.hostUrl = `https://www.airbnb.com.vn/users/show/${result.primaryHost.id}`;
+                            result.primaryHost.listingsCount = listings_count;
+                            result.primaryHost.totalListingsCount = total_listings_count;
+                        } catch (e) {
+                            log.exception(e, 'Error while retrieving host info', { url: request.url, id: result.primaryHost.id });
                         }
                     }
 

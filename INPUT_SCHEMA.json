@@ -71,6 +71,12 @@
       "description": "If checked, includes the available range of days",
       "default": false
     },
+    "addMoreHostInfo": {
+      "title": "Add more host information",
+      "type": "boolean",
+      "description": "If checked, add more information for the primary host such as host url and number of listings",
+      "default": false
+    },
     "currency": {
       "title": "Currency",
       "type": "string",

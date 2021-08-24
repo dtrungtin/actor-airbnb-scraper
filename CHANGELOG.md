@@ -18,3 +18,6 @@
 ## 2021-06-01
 - fixed max item field to work properly
 - fixed external source of input (CSV, google sheets)
+
+## 2021-08-24
+- Added more information for the primary host such as host url and number of listings

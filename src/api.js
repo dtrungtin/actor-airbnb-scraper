@@ -119,9 +119,17 @@ function bookingDetailsUrl(listingId, checkIn, checkOut) {
     return `https://api.airbnb.com/v2/pdp_listing_booking_details?${querystring.stringify(queryString)}`;
 }
 
+/**
+ * @param {string} hostId
+ */
+function callForHostInfo(hostId) {
+    return `https://api.airbnb.com/v2/users/${hostId}`;
+}
+
 module.exports = {
     callForReviews,
     getBuildListingUrl,
     calendarMonths,
     bookingDetailsUrl,
+    callForHostInfo,
 };
