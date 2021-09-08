@@ -74,7 +74,7 @@
     "addMoreHostInfo": {
       "title": "Add more host information",
       "type": "boolean",
-      "description": "If checked, add more information for the primary host such as host url and number of listings",
+      "description": "If checked, add more information for the primary host such as host url and number of listings. Only work if the Extract main listing information only (no detail) is unchecked",
       "default": false
     },
     "currency": {
