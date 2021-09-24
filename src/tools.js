@@ -349,7 +349,7 @@ function validateInput(input) {
             throw new Error('startUrls should be an array');
         }
         input.startUrls.forEach((request) => {
-            if (request.url && !request.url.includes('airbnb')) {
+            if (request.url && !request.url.includes('airbnb') && !request.url.includes('abnb.me')) {
                 throw new Error('Start url should be an airbnb');
             }
         });

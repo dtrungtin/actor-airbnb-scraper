@@ -141,11 +141,18 @@ Apify.main(async () => {
         let request = await requestList.fetchNextRequest();
 
         while (request) {
-            if (!request.url.includes('airbnb.com/rooms')) {
+            if (!request.url.includes('airbnb.com/rooms') && !request.url.includes('abnb.me/')) {
                 throw new Error(`Provided urls must be AirBnB room urls, got ${request.url}`);
             }
 
-            const url = new URL(request.url);
+            let url;
+            if (request.url.includes('abnb.me')) {
+                const response = await requestAsBrowser({ url: request.url, encoding: 'utf8' });
+                url = response.request.options.url;
+            } else {
+                url = new URL(request.url);
+            }
+
             const id = url.pathname.split('/').pop();
 
             const rq = await enqueueDetailLink(id, requestQueue, minPrice, maxPrice, request.url, {});

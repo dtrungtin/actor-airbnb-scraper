@@ -27,6 +27,8 @@ You have to only fill in the location field in the UI or pass the `INPUT` in the
 
 The only thing you have to do is provide a list of urls pointing to the Airbnb listing detail, for example:`https://www.airbnb.cz/rooms/31021739?adults=1&toddlers=0&check_in=2019-05-15&check_out=2019-05-23&guests=1&source_impression_id=p3_1557753504_RkhYbgY4jm9gY%2FVh&s=wUZdYw7_`
 
+Also accept the shortened abnb.me urls, for example: `https://abnb.me/olPm75bhTY`
+
 You can either use UI to pass the list of urls or you can specify the `INPUT` directly. In that case the file should like this:
 
 ```jsonc
