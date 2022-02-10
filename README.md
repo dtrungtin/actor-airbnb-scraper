@@ -1,4 +1,3 @@
-
 Airbnb Scraper is designed to extract most of the publicly available Airbnb data for home listings. You can get all of the basic data about the listing, all reviews, prices, host/guest details, etc.
 
 ## What does Airbnb Scraper do?
@@ -21,7 +20,17 @@ If you're not sure how much credit you've got on your plan and whether you might
 
 For a step-by-step guide on how to scrape Airbnb, just follow our [Airbnb Scraper tutorial](
 https://blog.apify.com/how-to-scrape-airbnb-listings-and-reviews/
-). Once you're done with scraping, see how the extracted data is used in [traveling and tourism](https://apify.com/industries/travel-and-logistics) industries.
+). Once you're done with scraping, see how the extracted data is used in [traveling and tourism](https://apify.com/industries/travel-and-logistics) industries. 
+
+**How to use the scraped data for Airbnb data analysis:**
+
+-   **Monitor amount of Airbnb listings** in a chosen location and get the newest prices updates.
+- **Predict prices** for the given location for the upcoming tourist season.
+- **Find emerging trends** within the travel industry and adapt your offering.
+- **Analyze customer expectations** and preferences in terms of price range, housing size, features, available infrastructure etc.  
+- **Analyze reviews** using sentiment analysis to identify the most successful locations in town.
+- Narrow down to the **emerging popular locations to target** with the new touring or lodging offers.
+- **Support your decisions with data** when deciding to open/visit a new spot away from most popular destinations.
 
 ## Input parameters
 
