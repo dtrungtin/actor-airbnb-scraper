@@ -1,5 +1,6 @@
 /* eslint-disable camelcase */
 const Apify = require('apify');
+const util = require('util');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const csvToJson = require('csvtojson');
 
@@ -278,8 +279,8 @@ Apify.main(async () => {
                                 || checkIn
                                 || new Date().toISOString();
                             log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detail.id });
-                            const { calendar_months } = await doReq(calendarMonths(detail.id, checkInDate));
-                            simpleResult.calendar = calendar_months[0].days;
+                            const { data: { merlin: { pdpAvailabilityCalendar } } } = await doReq(calendarMonths(detail.id, checkInDate));
+                            simpleResult.calendar = pdpAvailabilityCalendar.calendarMonths[0].days;
                         } catch (e) {
                             log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
                         }
