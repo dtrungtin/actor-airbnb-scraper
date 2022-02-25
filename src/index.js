@@ -280,7 +280,7 @@ Apify.main(async () => {
                                 || new Date().toISOString();
                             log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detail.id });
                             const { data: { merlin: { pdpAvailabilityCalendar } } } = await doReq(calendarMonths(detail.id, checkInDate));
-                            simpleResult.calendar = pdpAvailabilityCalendar.calendarMonths[0].days;
+                            simpleResult.calendar = pdpAvailabilityCalendar.calendarMonths[0];
                         } catch (e) {
                             log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
                         }
