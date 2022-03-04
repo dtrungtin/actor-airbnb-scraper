@@ -82,16 +82,18 @@ Apify.main(async () => {
                 if (session) {
                     session.markBad();
                 }
-                // log.exception(e.message, 'GetData error');
+                if (debugLog) {
+                    log.exception(e, 'GetData error');
+                }
             }
 
             const valid = !!response && !!response.body;
             if (valid === false) {
-                if (attempt >= 10) {
-                    if (session) {
-                        session.markBad();
-                    }
+                if (session) {
+                    session.markBad();
+                }
 
+                if (attempt >= 5) {
                     throw new Error(`Could not get data for: ${options.url}`);
                 }
 
@@ -103,6 +105,16 @@ Apify.main(async () => {
             try {
                 return JSON.parse(response.body);
             } catch (e) {
+                if (debugLog) {
+                    log.exception(e, 'GetData JSON.parse error');
+                }
+                if (session) {
+                    session.markBad();
+                }
+
+                if (attempt >= 5) {
+                    throw new Error(`Could not get data for: ${options.url}`);
+                }
                 await sleep(5000);
                 return getData(attempt + 1);
             }
@@ -322,6 +334,7 @@ Apify.main(async () => {
                     }
                 } catch (e) {
                     log.exception(e, 'Could not get detail for home', { url: request.url });
+                    throw e;
                 }
             }
         },
