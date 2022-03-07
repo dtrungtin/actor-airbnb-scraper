@@ -29,7 +29,7 @@ Apify.main(async () => {
         startUrls,
         proxyConfiguration,
         includeReviews = true,
-        maxReviews = 10,
+        maxReviews,
         maxListings,
         includeCalendar = false,
         addMoreHostInfo = false,
