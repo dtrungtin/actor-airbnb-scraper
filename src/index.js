@@ -10,6 +10,8 @@ const { getBuildListingUrl, calendarMonths, bookingDetailsUrl, callForHostInfo }
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
 
+const returnPriceForUnavailableDates = true;
+
 Apify.main(async () => {
     const input = await Apify.getInput();
 
@@ -257,12 +259,12 @@ Apify.main(async () => {
 
                             if (checkInDate && checkOutDate) {
                                 pricingDetailsUrl = bookingDetailsUrl(detailId, checkInDate, checkOutDate);
-                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`, { url: pricingDetailsUrl, id: detailId });
+                                log.info(`Requesting pricing details from ${checkInDate} to ${checkOutDate}`, { url: pricingDetailsUrl, id: detailId });
                                 const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
                                 const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
 
-                                if (available) {
+                                if (available || returnPriceForUnavailableDates) {
                                     simpleResult.pricing = {
                                         rate: {
                                             amount,
