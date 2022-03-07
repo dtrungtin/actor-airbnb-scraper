@@ -220,6 +220,9 @@ Apify.main(async () => {
                     log.info(`Saving home detail - ${detailId}`);
 
                     detail.reviews = [];
+                    // For some listings, the detail API v2 endpoint returns a different detail ID and also different url,
+                    // so keeping the original url is necessary, especially for filtering URLs by distance
+                    detail['download:url'] = request.userData.originalUrl;
 
                     if (includeReviews) {
                         try {
