@@ -213,14 +213,15 @@ Apify.main(async () => {
                 await pivot(request, requestQueue, doReq, buildListingUrl);
             } else if (isHomeDetail) {
                 try {
+                    const detailId = request.userData.id;
                     const { pdp_listing_detail: detail } = await doReq(request.url);
-                    log.info(`Saving home detail - ${detail.id}`);
+                    log.info(`Saving home detail - ${detailId}`);
 
                     detail.reviews = [];
 
                     if (includeReviews) {
                         try {
-                            detail.reviews = await getReviews(request.userData.id, doReq, maxReviews);
+                            detail.reviews = await getReviews(detailId, doReq, maxReviews);
                         } catch (e) {
                             log.exception(e, 'Could not get reviews');
                         }
@@ -229,7 +230,7 @@ Apify.main(async () => {
                     const result = camelcaseKeysRecursive(detail);
                     const { locationTitle, starRating, guestLabel, p3SummaryTitle, lat, lng, roomAndPropertyType, reviews } = result;
                     const simpleResult = {
-                        url: `https://www.airbnb.com/rooms/${detail.id}`,
+                        url: `https://www.airbnb.com/rooms/${detailId}`,
                         name: p3SummaryTitle,
                         stars: starRating,
                         numberOfGuests: parseInt(guestLabel.match(/\d+/)[0], 10),
@@ -255,8 +256,8 @@ Apify.main(async () => {
                                 || checkOut || null;
 
                             if (checkInDate && checkOutDate) {
-                                pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
-                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`, { url: pricingDetailsUrl, id: detail.id });
+                                pricingDetailsUrl = bookingDetailsUrl(detailId, checkInDate, checkOutDate);
+                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`, { url: pricingDetailsUrl, id: detailId });
                                 const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
                                 const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
@@ -280,7 +281,7 @@ Apify.main(async () => {
                                 }
                             }
                         } catch (e) {
-                            log.exception(e, 'Error while retrieving pricing details', { url: pricingDetailsUrl, id: detail.id });
+                            log.exception(e, 'Error while retrieving pricing details', { url: pricingDetailsUrl, id: detailId });
                         }
                     }
 
@@ -290,11 +291,11 @@ Apify.main(async () => {
                             const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
                                 || checkIn
                                 || new Date().toISOString();
-                            log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detail.id });
-                            const { data: { merlin: { pdpAvailabilityCalendar } } } = await doReq(calendarMonths(detail.id, checkInDate));
+                            log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detailId });
+                            const { data: { merlin: { pdpAvailabilityCalendar } } } = await doReq(calendarMonths(detailId, checkInDate));
                             simpleResult.calendar = pdpAvailabilityCalendar.calendarMonths[0];
                         } catch (e) {
-                            log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
+                            log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detailId });
                         }
                     }
 
