@@ -247,6 +247,7 @@ Apify.main(async () => {
                         },
                         reviews,
                         pricing: {},
+                        'download:url': detail['download:url'],
                     };
 
                     if (request.userData.pricing && request.userData.pricing.rate) {
