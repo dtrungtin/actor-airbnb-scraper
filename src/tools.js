@@ -276,12 +276,16 @@ async function getReviews(listingId, getRequest, maxReviews) {
     const data = await req();
     data.reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
 
+    const numberOfHomes = data.metadata.reviews_count;
+    const numberOfFetches = numberOfHomes / pageSize;
+
+    if ('number' !== typeof maxReviews) {
+        maxReviews = numberOfHomes;
+    }
+
     if (results.length >= maxReviews) {
         return results.slice(0, maxReviews);
     }
-
-    const numberOfHomes = data.metadata.reviews_count;
-    const numberOfFetches = numberOfHomes / pageSize;
 
     for (let i = 0; i < numberOfFetches; i++) {
         offset += pageSize;
