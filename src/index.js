@@ -1,5 +1,6 @@
 /* eslint-disable camelcase */
 const Apify = require('apify');
+const util = require('util');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const csvToJson = require('csvtojson');
 
@@ -8,6 +9,8 @@ const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSea
 const { getBuildListingUrl, calendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
+
+const returnPriceForUnavailableDates = true;
 
 Apify.main(async () => {
     const input = await Apify.getInput();
@@ -26,7 +29,7 @@ Apify.main(async () => {
         startUrls,
         proxyConfiguration,
         includeReviews = true,
-        maxReviews = 10,
+        maxReviews,
         maxListings,
         includeCalendar = false,
         addMoreHostInfo = false,
@@ -81,16 +84,18 @@ Apify.main(async () => {
                 if (session) {
                     session.markBad();
                 }
-                // log.exception(e.message, 'GetData error');
+                if (debugLog) {
+                    log.exception(e, 'GetData error');
+                }
             }
 
             const valid = !!response && !!response.body;
             if (valid === false) {
-                if (attempt >= 10) {
-                    if (session) {
-                        session.markBad();
-                    }
+                if (session) {
+                    session.markBad();
+                }
 
+                if (attempt >= 5) {
                     throw new Error(`Could not get data for: ${options.url}`);
                 }
 
@@ -102,6 +107,16 @@ Apify.main(async () => {
             try {
                 return JSON.parse(response.body);
             } catch (e) {
+                if (debugLog) {
+                    log.exception(e, 'GetData JSON.parse error');
+                }
+                if (session) {
+                    session.markBad();
+                }
+
+                if (attempt >= 5) {
+                    throw new Error(`Could not get data for: ${options.url}`);
+                }
                 await sleep(5000);
                 return getData(attempt + 1);
             }
@@ -190,7 +205,7 @@ Apify.main(async () => {
     const crawler = new Apify.BasicCrawler({
         requestQueue,
         maxConcurrency,
-        handleRequestTimeoutSecs: 1200,
+        handleRequestTimeoutSecs: 60,
         useSessionPool: true,
         handleRequestFunction: async ({ request, session, crawler }) => {
             const { isHomeDetail, isPivoting } = request.userData;
@@ -200,14 +215,18 @@ Apify.main(async () => {
                 await pivot(request, requestQueue, doReq, buildListingUrl);
             } else if (isHomeDetail) {
                 try {
+                    const detailId = request.userData.id;
                     const { pdp_listing_detail: detail } = await doReq(request.url);
-                    log.info(`Saving home detail - ${detail.id}`);
+                    log.info(`Saving home detail - ${detailId}`);
 
                     detail.reviews = [];
+                    // For some listings, the detail API v2 endpoint returns a different detail ID and also different url,
+                    // so keeping the original url is necessary, especially for filtering URLs by distance
+                    detail['download:url'] = request.userData.originalUrl;
 
                     if (includeReviews) {
                         try {
-                            detail.reviews = await getReviews(request.userData.id, doReq, maxReviews);
+                            detail.reviews = await getReviews(detailId, doReq, maxReviews);
                         } catch (e) {
                             log.exception(e, 'Could not get reviews');
                         }
@@ -216,7 +235,7 @@ Apify.main(async () => {
                     const result = camelcaseKeysRecursive(detail);
                     const { locationTitle, starRating, guestLabel, p3SummaryTitle, lat, lng, roomAndPropertyType, reviews } = result;
                     const simpleResult = {
-                        url: `https://www.airbnb.com/rooms/${detail.id}`,
+                        url: `https://www.airbnb.com/rooms/${detailId}`,
                         name: p3SummaryTitle,
                         stars: starRating,
                         numberOfGuests: parseInt(guestLabel.match(/\d+/)[0], 10),
@@ -228,6 +247,7 @@ Apify.main(async () => {
                         },
                         reviews,
                         pricing: {},
+                        'download:url': detail['download:url'],
                     };
 
                     if (request.userData.pricing && request.userData.pricing.rate) {
@@ -242,13 +262,13 @@ Apify.main(async () => {
                                 || checkOut || null;
 
                             if (checkInDate && checkOutDate) {
-                                pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
-                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`, { url: pricingDetailsUrl, id: detail.id });
+                                pricingDetailsUrl = bookingDetailsUrl(detailId, checkInDate, checkOutDate);
+                                log.info(`Requesting pricing details from ${checkInDate} to ${checkOutDate}`, { url: pricingDetailsUrl, id: detailId });
                                 const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
                                 const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
 
-                                if (available) {
+                                if (available || returnPriceForUnavailableDates) {
                                     simpleResult.pricing = {
                                         rate: {
                                             amount,
@@ -267,7 +287,7 @@ Apify.main(async () => {
                                 }
                             }
                         } catch (e) {
-                            log.exception(e, 'Error while retrieving pricing details', { url: pricingDetailsUrl, id: detail.id });
+                            log.exception(e, 'Error while retrieving pricing details', { url: pricingDetailsUrl, id: detailId });
                         }
                     }
 
@@ -277,11 +297,11 @@ Apify.main(async () => {
                             const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
                                 || checkIn
                                 || new Date().toISOString();
-                            log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detail.id });
-                            const { calendar_months } = await doReq(calendarMonths(detail.id, checkInDate));
-                            simpleResult.calendar = calendar_months[0].days;
+                            log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detailId });
+                            const { data: { merlin: { pdpAvailabilityCalendar } } } = await doReq(calendarMonths(detailId, checkInDate));
+                            simpleResult.calendar = pdpAvailabilityCalendar.calendarMonths[0];
                         } catch (e) {
-                            log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
+                            log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detailId });
                         }
                     }
 
@@ -321,6 +341,7 @@ Apify.main(async () => {
                     }
                 } catch (e) {
                     log.exception(e, 'Could not get detail for home', { url: request.url });
+                    throw e;
                 }
             }
         },

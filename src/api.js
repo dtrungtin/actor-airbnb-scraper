@@ -95,11 +95,22 @@ function callForReviews(listingId, limit = 50, offset = 0) {
 function calendarMonths(listingId, checkIn) {
     const date = moment(checkIn);
 
-    return `https://api.airbnb.com/v2/calendar_months?${querystring.stringify({
-        listing_id: listingId,
-        month: date.get('month') + 1,
-        year: date.get('year'),
-        count: 1,
+    return `https://www.airbnb.cz/api/v3/PdpAvailabilityCalendar?${querystring.stringify({
+        operationName: 'PdpAvailabilityCalendar',
+        variables: JSON.stringify({
+            request: {
+                count: 12,
+                listingId,
+                month: date.get('month') + 1,
+                year: date.get('year'),
+            },
+        }),
+        extensions: JSON.stringify({
+            persistedQuery: {
+                version: 1,
+                sha256Hash: '8f08e03c7bd16fcad3c92a3592c19a8b559a0d0855a84028d1163d4733ed9ade',
+            },
+        }),
     })}`;
 }
 
