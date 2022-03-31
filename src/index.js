@@ -192,7 +192,12 @@ Apify.main(async () => {
         // Divide location into smaller areas to search more results
         if (!maxListings || maxListings > 1000) {
             const doReq = getRequest(null);
-            const cityQuery = await getSearchLocation({ maxPrice, minPrice }, adults, children, infants, pets, locationQuery, doReq, buildListingUrl);
+            let cityQuery;
+            if (locationQuery.startsWith('[') && locationQuery.endsWith(']')) {
+                cityQuery = locationQuery;
+            } else {
+                cityQuery = await getSearchLocation({ maxPrice, minPrice }, adults, children, infants, pets, locationQuery, doReq, buildListingUrl);
+            }
             log.info(`Location query: ${cityQuery}`);
             const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
 

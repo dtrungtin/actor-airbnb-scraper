@@ -139,13 +139,13 @@ function findPointsInPolygon(location, distanceKilometers, limitPoints) {
 
 async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {
     const distanceMeters = DISTANCE_METERS;
-    const params = { query: cityQuery };
     
     let polygons;
     if (cityQuery.startsWith('[') && cityQuery.endsWith(']')) {
         location = JSON.parse(cityQuery)
         polygons = [[location[2], location[0]], [location[3], location[0]], [location[3], location[1], [location[2], location[1]]]];
     } else {
+        const params = { query: cityQuery };
         polygons = await findPolygons(params, getRequest);
         log.info(`Found ${polygons.length} polygons`);
     }
