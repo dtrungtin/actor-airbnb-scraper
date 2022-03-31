@@ -144,7 +144,8 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     if (cityQuery.startsWith('[') && cityQuery.endsWith(']')) {
         location = JSON.parse(cityQuery)
         filteredPolygons = [{
-            geojson: {type: "Polygon", coordinates: [[[location[2], location[0]], [location[3], location[0]], [location[3], location[1]], [location[2], location[1], [location[2], location[0]]]]]}
+            place_id: 'search rectangle',
+            geojson: {type: "Polygon", coordinates: [[[location[2], location[0]], [location[3], location[0]], [location[3], location[1]], [location[2], location[1]], [location[2], location[0]]]]}
         }];
     } else {
         const params = { query: cityQuery };
