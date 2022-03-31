@@ -220,7 +220,7 @@ async function addListings({ minPrice, maxPrice }, adults, children, infants, pe
  * @param {(...args: any) => string} buildListingUrl
  */
 async function pivot(request, requestQueue, getRequest, buildListingUrl) {
-    const { pivotStart, pivotEnd, query } = request.userData;
+    const { pivotStart, pivotEnd, adults, children, infants, pets, query } = request.userData;
     const data = await getRequest(request.url);
     let listingCount = data.explore_tabs[0].home_tab_metadata.listings_count;
     if (listingCount === 0) {
