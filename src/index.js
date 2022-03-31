@@ -5,10 +5,11 @@ const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const csvToJson = require('csvtojson');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
-const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing, parseLocationInput } = require('./tools');
+const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
 const { getBuildListingUrl, calendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
+const { parseLocationInput } = require('./helpers');
 
 const returnPriceForUnavailableDates = true;
 

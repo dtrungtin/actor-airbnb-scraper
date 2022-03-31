@@ -435,13 +435,6 @@ async function isMaxListing(maxListings) {
     };
 }
 
-function parseLocationInput(location) {
-    if (typeof location === 'string' && location.trim().startsWith('[') && location.trim().endsWith(']')) {
-        return JSON.parse(location);
-    }
-    return location;
-}
-
 module.exports = {
     addListings,
     pivot,
@@ -451,5 +444,4 @@ module.exports = {
     getSearchLocation,
     isMaxListing,
     meterPrecision,
-    parseLocationInput,
 };

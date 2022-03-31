@@ -1,7 +1,7 @@
 const querystring = require('querystring');
 const moment = require('moment');
 const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
-const { parseLocationInput } = require('./tools');
+const { parseLocationInput } = require('./helpers');
 
 /**
  * @param {{

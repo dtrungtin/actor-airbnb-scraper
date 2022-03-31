@@ -2,7 +2,8 @@ const Apify = require('apify');
 const turf = require('@turf/turf');
 
 const { DISTANCE_METERS } = require('./constants');
-const { meterPrecision, parseLocationInput } = require('./tools');
+const { meterPrecision } = require('./tools');
+const { parseLocationInput } = require('./helpers');
 
 const { log, sleep } = Apify.utils;
 
@@ -139,13 +140,24 @@ function findPointsInPolygon(location, distanceKilometers, limitPoints) {
 
 async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {
     const distanceMeters = DISTANCE_METERS;
-    
+
     let filteredPolygons;
     const location = parseLocationInput(cityQuery);
     if (Array.isArray(location)) {
         filteredPolygons = [{
             place_id: 'search rectangle',
-            geojson: {type: "Polygon", coordinates: [[[location[2], location[0]], [location[3], location[0]], [location[3], location[1]], [location[2], location[1]], [location[2], location[0]]]]}
+            geojson: {
+                type: 'Polygon',
+                coordinates: [
+                    [
+                        [location[2], location[0]],
+                        [location[3], location[0]],
+                        [location[3], location[1]],
+                        [location[2], location[1]],
+                        [location[2], location[0]],
+                    ],
+                ],
+            },
         }];
     } else {
         const params = { query: location };
