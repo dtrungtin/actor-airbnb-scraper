@@ -40,6 +40,8 @@ const getBuildListingUrl = ({
     }) => {
         const url = new URL('https://api.airbnb.com/v2/explore_tabs');
 
+        location = location.trim();
+        if (location.startsWith('[') && location.endsWith(']')) location = JSON.parse(location)
         if (Array.isArray(location)) {
             /* eslint-disable camelcase */
             const sw_lat = location[0];
