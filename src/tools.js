@@ -438,9 +438,8 @@ async function isMaxListing(maxListings) {
 function parseLocationInput(location) {
     if (typeof location === 'string' && location.trim().startsWith('[') && location.trim().endsWith(']')) {
         return JSON.parse(location);
-    } else {
-        return location;
     }
+    return location;
 }
 
 module.exports = {
