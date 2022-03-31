@@ -142,8 +142,8 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     const params = { query: cityQuery };
     
     let polygons;
-    if (location.startsWith('[') && location.endsWith(']')) {
-        location = JSON.parse(location)
+    if (cityQuery.startsWith('[') && cityQuery.endsWith(']')) {
+        location = JSON.parse(cityQuery)
         polygons = [[location[2], location[0]], [location[3], location[0]], [location[3], location[1], [location[2], location[1]]]];
     } else {
         polygons = await findPolygons(params, getRequest);
