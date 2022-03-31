@@ -2,7 +2,7 @@ const Apify = require('apify');
 const turf = require('@turf/turf');
 
 const { DISTANCE_METERS } = require('./constants');
-const { meterPrecision } = require('./tools');
+const { meterPrecision, parseLocationInput } = require('./tools');
 
 const { log, sleep } = Apify.utils;
 
@@ -141,14 +141,14 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     const distanceMeters = DISTANCE_METERS;
     
     let filteredPolygons;
-    if (cityQuery.startsWith('[') && cityQuery.endsWith(']')) {
-        location = JSON.parse(cityQuery)
+    const location = parseLocationInput(cityQuery);
+    if (Array.isArray(location)) {
         filteredPolygons = [{
             place_id: 'search rectangle',
             geojson: {type: "Polygon", coordinates: [[[location[2], location[0]], [location[3], location[0]], [location[3], location[1]], [location[2], location[1]], [location[2], location[0]]]]}
         }];
     } else {
-        const params = { query: cityQuery };
+        const params = { query: location };
         const polygons = await findPolygons(params, getRequest);
         log.info(`Found ${polygons.length} polygons`);
 

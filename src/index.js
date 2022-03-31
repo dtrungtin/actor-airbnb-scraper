@@ -5,7 +5,7 @@ const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const csvToJson = require('csvtojson');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
-const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
+const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing, parseLocationInput } = require('./tools');
 const { getBuildListingUrl, calendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
@@ -192,10 +192,8 @@ Apify.main(async () => {
         // Divide location into smaller areas to search more results
         if (!maxListings || maxListings > 1000) {
             const doReq = getRequest(null);
-            let cityQuery;
-            if (locationQuery.startsWith('[') && locationQuery.endsWith(']')) {
-                cityQuery = locationQuery;
-            } else {
+            let cityQuery = parseLocationInput(locationQuery);
+            if (!Array.isArray(cityQuery)) {
                 cityQuery = await getSearchLocation({ maxPrice, minPrice }, adults, children, infants, pets, locationQuery, doReq, buildListingUrl);
             }
             log.info(`Location query: ${cityQuery}`);
