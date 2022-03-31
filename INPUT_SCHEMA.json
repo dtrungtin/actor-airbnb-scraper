@@ -375,6 +375,26 @@
         "type": "integer",
         "description": "Sets filter max_price (per night) to the search query."
       },
+      "adults": {
+        "title": "Required number of adult guests",
+        "type": "integer",
+        "description": "Adds guest filter to the search query."
+      },
+      "children": {
+        "title": "Required number of child guests",
+        "type": "integer",
+        "description": "Adds guest filter to the search query."
+      },
+      "infants": {
+        "title": "Required number of infant guests",
+        "type": "integer",
+        "description": "Adds guest filter to the search query."
+      },
+      "pets": {
+        "title": "Required number of pet guests",
+        "type": "integer",
+        "description": "Adds guest filter to the search query."
+      },
       "checkIn": {
         "title": "Checkin date",
         "type": "string",

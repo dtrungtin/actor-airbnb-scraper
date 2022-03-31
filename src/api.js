@@ -19,6 +19,10 @@ const getBuildListingUrl = ({
      * location: (number[] | string),
      * minPrice: number,
      * maxPrice: number,
+     * adults: number,
+     * children: number,
+     * children: number,
+     * infants: number,
      * limit: number,
      * offset: number,
      * }} params
@@ -27,6 +31,10 @@ const getBuildListingUrl = ({
         location,
         minPrice = DEFAULT_MIN_PRICE,
         maxPrice = DEFAULT_MAX_PRICE,
+        adults = 0,
+        children = 0,
+        infants = 0,
+        pets = 0,
         limit = 20,
         offset = 0,
     }) => {
@@ -54,6 +62,22 @@ const getBuildListingUrl = ({
 
         if (typeof maxPrice === 'number' && maxPrice > minPrice) {
             url.searchParams.set('price_max', `${maxPrice}`);
+        }
+
+        if (typeof adults === 'number' && adults > 0) {
+            url.searchParams.set('adults', `${adults}`);
+        }
+
+        if (typeof children === 'number' && children > 0) {
+            url.searchParams.set('children', `${children}`);
+        }
+
+        if (typeof infants === 'number' && infants > 0) {
+            url.searchParams.set('infants', `${infants}`);
+        }
+
+        if (typeof pets === 'number' && pets > 0) {
+            url.searchParams.set('pets', `${pets}`);
         }
 
         url.searchParams.set('items_per_grid', `${limit}`);

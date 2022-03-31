@@ -23,6 +23,10 @@ Apify.main(async () => {
         locationQuery,
         minPrice = DEFAULT_MIN_PRICE,
         maxPrice = DEFAULT_MAX_PRICE,
+        adults = 0,
+        children = 0,
+        infants = 0,
+        pets = 0,
         maxConcurrency = 50,
         checkIn,
         checkOut,
@@ -170,7 +174,7 @@ Apify.main(async () => {
 
             const id = url.pathname.split('/').pop();
 
-            const rq = await enqueueDetailLink(id, requestQueue, minPrice, maxPrice, request.url, {});
+            const rq = await enqueueDetailLink(id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, request.url, {});
 
             if (!rq.wasAlreadyPresent) {
                 count++;
@@ -183,12 +187,12 @@ Apify.main(async () => {
     } else {
         log.info(`"startUrls" isn't being used, will search now for "${locationQuery}"...`);
 
-        await addListings({ minPrice, maxPrice }, locationQuery, requestQueue, buildListingUrl);
+        await addListings({ minPrice, maxPrice }, adults, children, infants, pets, locationQuery, requestQueue, buildListingUrl);
 
         // Divide location into smaller areas to search more results
         if (!maxListings || maxListings > 1000) {
             const doReq = getRequest(null);
-            const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrl);
+            const cityQuery = await getSearchLocation({ maxPrice, minPrice }, adults, children, infants, pets, locationQuery, doReq, buildListingUrl);
             log.info(`Location query: ${cityQuery}`);
             const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
 
@@ -196,7 +200,7 @@ Apify.main(async () => {
                 log.info('Cannot divide location query into smaller areas!');
             } else {
                 for (const area of areaList) {
-                    await addListings({ minPrice, maxPrice }, area, requestQueue, buildListingUrl);
+                    await addListings({ minPrice, maxPrice }, adults, children, infants, pets, area, requestQueue, buildListingUrl);
                 }
             }
         }
