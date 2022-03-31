@@ -143,26 +143,28 @@ async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 30000
     let polygons;
     if (cityQuery.startsWith('[') && cityQuery.endsWith(']')) {
         location = JSON.parse(cityQuery)
-        polygons = [[location[2], location[0]], [location[3], location[0]], [location[3], location[1], [location[2], location[1]]]];
+        polygons = [{
+            geojson: {type: "Polygon", coordinates: [[[location[2], location[0]], [location[3], location[0]], [location[3], location[1]], [location[2], location[1]]]]}
+        }];
     } else {
         const params = { query: cityQuery };
         polygons = await findPolygons(params, getRequest);
         log.info(`Found ${polygons.length} polygons`);
+
+        const allowedTypes = Object.values(LOCATION_TYPES);
+        const allowedGeoTypes = Object.values(GEO_TYPES);
+        const allowedClasses = Object.values(LOCATION_CLASSES);
+        const filteredPolygons = polygons.filter((polygon) => {
+            if (!polygon.type) return false;
+            if (polygon.importance && polygon.importance <= MIN_IMPORTANCE) return false;
+            if (!allowedClasses.includes(polygon.class)) return false;
+            if (!allowedTypes.includes(polygon.type)) return false;
+            if (!polygon.geojson) return false;
+            return allowedGeoTypes.includes(polygon.geojson.type);
+        });
+
+        log.info(`Got ${filteredPolygons.length} filtered polygons`);
     }
-
-    const allowedTypes = Object.values(LOCATION_TYPES);
-    const allowedGeoTypes = Object.values(GEO_TYPES);
-    const allowedClasses = Object.values(LOCATION_CLASSES);
-    const filteredPolygons = polygons.filter((polygon) => {
-        if (!polygon.type) return false;
-        if (polygon.importance && polygon.importance <= MIN_IMPORTANCE) return false;
-        if (!allowedClasses.includes(polygon.class)) return false;
-        if (!allowedTypes.includes(polygon.type)) return false;
-        if (!polygon.geojson) return false;
-        return allowedGeoTypes.includes(polygon.geojson.type);
-    });
-
-    log.info(`Got ${filteredPolygons.length} filtered polygons`);
     const distanceKilometers = distanceMeters / 1000;
 
     const pointMap = new Map(await Apify.getValue('POINTS'));
