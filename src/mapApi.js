@@ -140,21 +140,21 @@ function findPointsInPolygon(location, distanceKilometers, limitPoints) {
 async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {
     const distanceMeters = DISTANCE_METERS;
     
-    let polygons;
+    let filteredPolygons;
     if (cityQuery.startsWith('[') && cityQuery.endsWith(']')) {
         location = JSON.parse(cityQuery)
-        polygons = [{
+        filteredPolygons = [{
             geojson: {type: "Polygon", coordinates: [[[location[2], location[0]], [location[3], location[0]], [location[3], location[1]], [location[2], location[1]]]]}
         }];
     } else {
         const params = { query: cityQuery };
-        polygons = await findPolygons(params, getRequest);
+        const polygons = await findPolygons(params, getRequest);
         log.info(`Found ${polygons.length} polygons`);
 
         const allowedTypes = Object.values(LOCATION_TYPES);
         const allowedGeoTypes = Object.values(GEO_TYPES);
         const allowedClasses = Object.values(LOCATION_CLASSES);
-        const filteredPolygons = polygons.filter((polygon) => {
+        filteredPolygons = polygons.filter((polygon) => {
             if (!polygon.type) return false;
             if (polygon.importance && polygon.importance <= MIN_IMPORTANCE) return false;
             if (!allowedClasses.includes(polygon.class)) return false;
