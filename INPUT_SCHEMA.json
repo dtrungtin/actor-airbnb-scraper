@@ -7,7 +7,7 @@
       "locationQuery": {
         "title": "Location",
         "type": "string",
-        "description": "Location name as you would enter to Airbnb search. Actor takes the first result as desired location.",
+        "description": "Location name as you would enter to Airbnb search. Actor takes the first result as desired location OR provide an array in format \"[sw_lat, ne_lat, sw_lng, sw_lat]\"",
         "prefill": "Sacramento",
         "editor": "textfield"
       },
