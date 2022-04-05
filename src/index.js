@@ -273,7 +273,7 @@ Apify.main(async () => {
                                 pricingDetailsUrl = bookingDetailsUrl(detailId, checkInDate, checkOutDate);
                                 log.info(`Requesting pricing details from ${checkInDate} to ${checkOutDate}`, { url: pricingDetailsUrl, id: detailId });
                                 const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
-                                const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
+                                const { available, rate_type, base_price_breakdown, p3_display_rate } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
 
                                 if (available || returnPriceForUnavailableDates) {
@@ -290,6 +290,12 @@ Apify.main(async () => {
                                             amount_formatted,
                                             currency: base_price_breakdown[0].currency,
                                             is_micros_accuracy,
+                                        },
+                                        total_price: {
+                                            amount: p3_display_rate.amount,
+                                            amount_formatted: p3_display_rate.amount_formatted,
+                                            currency: p3_display_rate.currency,
+                                            is_micros_accuracy: p3_display_rate.is_micros_accuracy,
                                         },
                                     };
                                 }
