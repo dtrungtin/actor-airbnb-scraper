@@ -114,6 +114,7 @@ Apify.main(async () => {
             } catch (e) {
                 if (debugLog) {
                     log.exception(e, 'GetData JSON.parse error');
+                    log.debug(`Could not parse: ${response.body}`);
                 }
                 if (session) {
                     session.markBad();

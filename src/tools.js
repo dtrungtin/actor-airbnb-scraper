@@ -27,7 +27,9 @@ const {
  */
 async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl) {
     log.info(`Listings section size: ${results.length}`);
-    log.info(JSON.stringify(results[0]));
+    for (const m of JSON.stringify(results[0]).match(/(.|[\r\n]){1,n}/g)) {
+        log.info(JSON.stringify(m));
+    }
     for (const l of results) {
         const { rate, rate_type, rate_with_service_fee, total_price } = get(l, ['pricing_quote'], {});
         await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl, { rate, rate_type, rate_with_service_fee, total_price });
