@@ -30,7 +30,7 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
     
     for (const l of results) {
         const { rate, rate_type, rate_with_service_fee, price, total } = get(l, ['pricing_quote'], {});
-        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl, { rate, rate_type, rate_with_service_fee, (total || price.total) });
+        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl, { rate, rate_type, rate_with_service_fee, total: total || price.total });
     }
 }
 
