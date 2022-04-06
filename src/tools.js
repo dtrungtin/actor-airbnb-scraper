@@ -27,7 +27,7 @@ const {
  */
 async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl) {
     log.info(`Listings section size: ${results.length}`);
-
+    log.info(JSON.stringify(results[0]));
     for (const l of results) {
         const { rate, rate_type, rate_with_service_fee, total_price } = get(l, ['pricing_quote'], {});
         await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl, { rate, rate_type, rate_with_service_fee, total_price });
@@ -54,10 +54,10 @@ function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, adults, childre
         userData: {
             isHomeDetail: true,
             minPrice,
-            maxPrice, 
-            adults, 
-            children, 
-            infants, 
+            maxPrice,
+            adults,
+            children,
+            infants,
             pets,
             pricing,
             id,
@@ -85,10 +85,10 @@ async function getSearchLocation({ minPrice, maxPrice }, adults, children, infan
         buildListingUrl({
             location,
             minPrice,
-            maxPrice, 
-            adults, 
-            children, 
-            infants, 
+            maxPrice,
+            adults,
+            children,
+            infants,
             pets,
             limit,
             offset,
@@ -178,11 +178,11 @@ async function addListings({ minPrice, maxPrice }, adults, children, infants, pe
         const url = buildListingUrl({
             location: query,
             minPrice: pivotStart,
-            maxPrice: pivotEnd, 
-            adults: adults, 
-            children: children, 
-            infants: infants, 
-            pets: pets,
+            maxPrice: pivotEnd,
+            adults,
+            children,
+            infants,
+            pets,
             limit: MIN_LIMIT,
             offset: 0,
         });
@@ -194,10 +194,10 @@ async function addListings({ minPrice, maxPrice }, adults, children, infants, pe
             userData: {
                 isPivoting: true,
                 pivotStart,
-                pivotEnd, 
-                adults, 
-                children, 
-                infants, 
+                pivotEnd,
+                adults,
+                children,
+                infants,
                 pets,
                 query,
             },
@@ -253,10 +253,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             location: query,
             minPrice: pivotStart,
             maxPrice: intervalMiddle,
-            adults: adults, 
-            children: children, 
-            infants: infants, 
-            pets: pets,
+            adults,
+            children,
+            infants,
+            pets,
             limit: MIN_LIMIT,
             offset: 0,
         });
@@ -267,10 +267,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             userData: {
                 pivotStart,
                 pivotEnd: intervalMiddle,
-                adults: adults, 
-                children: children, 
-                infants: infants, 
-                pets: pets,
+                adults,
+                children,
+                infants,
+                pets,
                 isPivoting: true,
                 query,
             },
@@ -280,10 +280,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             location: query,
             minPrice: intervalMiddle,
             maxPrice: pivotEnd,
-            adults: adults, 
-            children: children, 
-            infants: infants, 
-            pets: pets,
+            adults,
+            children,
+            infants,
+            pets,
             limit: MIN_LIMIT,
             offset: 0,
         });
@@ -294,10 +294,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             userData: {
                 pivotStart: intervalMiddle,
                 pivotEnd,
-                adults: adults, 
-                children: children, 
-                infants: infants, 
-                pets: pets,
+                adults,
+                children,
+                infants,
+                pets,
                 isPivoting: true,
                 query,
             } });
@@ -374,7 +374,6 @@ function validateInput(input) {
     }
 
     // check correct types
-    validate(input.locationQuery, 'string');
     validate(input.minPrice, 'number');
     validate(input.maxPrice, 'number');
     validate(input.adults, 'number');
