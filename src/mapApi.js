@@ -3,6 +3,7 @@ const turf = require('@turf/turf');
 
 const { DISTANCE_METERS } = require('./constants');
 const { meterPrecision } = require('./tools');
+const { parseLocationInput } = require('./helpers');
 
 const { log, sleep } = Apify.utils;
 
@@ -139,23 +140,44 @@ function findPointsInPolygon(location, distanceKilometers, limitPoints) {
 
 async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {
     const distanceMeters = DISTANCE_METERS;
-    const params = { query: cityQuery };
-    const polygons = await findPolygons(params, getRequest);
-    log.info(`Found ${polygons.length} polygons`);
 
-    const allowedTypes = Object.values(LOCATION_TYPES);
-    const allowedGeoTypes = Object.values(GEO_TYPES);
-    const allowedClasses = Object.values(LOCATION_CLASSES);
-    const filteredPolygons = polygons.filter((polygon) => {
-        if (!polygon.type) return false;
-        if (polygon.importance && polygon.importance <= MIN_IMPORTANCE) return false;
-        if (!allowedClasses.includes(polygon.class)) return false;
-        if (!allowedTypes.includes(polygon.type)) return false;
-        if (!polygon.geojson) return false;
-        return allowedGeoTypes.includes(polygon.geojson.type);
-    });
+    let filteredPolygons;
+    const location = parseLocationInput(cityQuery);
+    if (Array.isArray(location)) {
+        filteredPolygons = [{
+            place_id: 'search rectangle',
+            geojson: {
+                type: 'Polygon',
+                coordinates: [
+                    [
+                        [location[2], location[0]],
+                        [location[3], location[0]],
+                        [location[3], location[1]],
+                        [location[2], location[1]],
+                        [location[2], location[0]],
+                    ],
+                ],
+            },
+        }];
+    } else {
+        const params = { query: location };
+        const polygons = await findPolygons(params, getRequest);
+        log.info(`Found ${polygons.length} polygons`);
 
-    log.info(`Got ${filteredPolygons.length} filtered polygons`);
+        const allowedTypes = Object.values(LOCATION_TYPES);
+        const allowedGeoTypes = Object.values(GEO_TYPES);
+        const allowedClasses = Object.values(LOCATION_CLASSES);
+        filteredPolygons = polygons.filter((polygon) => {
+            if (!polygon.type) return false;
+            if (polygon.importance && polygon.importance <= MIN_IMPORTANCE) return false;
+            if (!allowedClasses.includes(polygon.class)) return false;
+            if (!allowedTypes.includes(polygon.type)) return false;
+            if (!polygon.geojson) return false;
+            return allowedGeoTypes.includes(polygon.geojson.type);
+        });
+
+        log.info(`Got ${filteredPolygons.length} filtered polygons`);
+    }
     const distanceKilometers = distanceMeters / 1000;
 
     const pointMap = new Map(await Apify.getValue('POINTS'));

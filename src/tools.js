@@ -19,14 +19,18 @@ const {
  * @param {Apify.RequestQueue} requestQueue
  * @param {number} minPrice
  * @param {number} maxPrice
+ * @param {number} adults
+ * @param {number} children
+ * @param {number} infants
+ * @param {number} pets
  * @param {string} originalUrl
  */
-async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, originalUrl) {
+async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl) {
     log.info(`Listings section size: ${results.length}`);
-
+    
     for (const l of results) {
-        const { rate, rate_type, rate_with_service_fee } = get(l, ['pricing_quote'], {});
-        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, originalUrl, { rate, rate_type, rate_with_service_fee });
+        const { rate, rate_type, rate_with_service_fee, price, total } = get(l, ['pricing_quote'], {});
+        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl, { rate, rate_type, rate_with_service_fee, total: total || price.total });
     }
 }
 
@@ -35,10 +39,14 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
  * @param {Apify.RequestQueue} requestQueue
  * @param {number} minPrice
  * @param {number} maxPrice
+ * @param {number} adults
+ * @param {number} children
+ * @param {number} infants
+ * @param {number} pets
  * @param {string} originalUrl
  * @param {any} pricing
  */
-function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pricing) {
+function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, adults, children, infants, pets, originalUrl, pricing) {
     log.debug(`Enquing home with id: ${id}`);
 
     return requestQueue.addRequest({
@@ -47,6 +55,10 @@ function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pr
             isHomeDetail: true,
             minPrice,
             maxPrice,
+            adults,
+            children,
+            infants,
+            pets,
             pricing,
             id,
             originalUrl,
@@ -66,7 +78,7 @@ function randomDelay(minimum = 100, maximum = 200) {
  * @param {(...args: any) => Promise<any>} getRequest
  * @param {(...args: any) => string} buildListingUrl
  */
-async function getSearchLocation({ minPrice, maxPrice }, location, getRequest, buildListingUrl) {
+async function getSearchLocation({ minPrice, maxPrice }, adults, children, infants, pets, location, getRequest, buildListingUrl) {
     const limit = MAX_LIMIT;
     const offset = 0;
     const data = await getRequest(
@@ -74,6 +86,10 @@ async function getSearchLocation({ minPrice, maxPrice }, location, getRequest, b
             location,
             minPrice,
             maxPrice,
+            adults,
+            children,
+            infants,
+            pets,
             limit,
             offset,
         }),
@@ -108,11 +124,11 @@ function findListings(sections) {
  * @param {(...args: any) => Promise<any>} getRequest
  * @param {(...args: any) => string} buildListingUrl
  */
-async function getListingsSection({ minPrice, maxPrice }, location, requestQueue, getRequest, buildListingUrl) {
+async function getListingsSection({ minPrice, maxPrice }, adults, children, infants, pets, location, requestQueue, getRequest, buildListingUrl) {
     const limit = MAX_LIMIT;
     let offset = 0;
     const request = async () => {
-        const url = buildListingUrl({ location, minPrice, maxPrice, limit, offset });
+        const url = buildListingUrl({ location, minPrice, maxPrice, adults, children, infants, pets, limit, offset });
         return { data: await getRequest(url), url };
     };
     const { data, url: firstUrl } = await request();
@@ -121,7 +137,7 @@ async function getListingsSection({ minPrice, maxPrice }, location, requestQueue
     let listings = findListings(sections);
 
     if (listings.length) {
-        await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, firstUrl);
+        await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, adults, children, infants, pets, firstUrl);
     }
 
     let hasNextPage = pagination_metadata.has_next_page;
@@ -136,7 +152,7 @@ async function getListingsSection({ minPrice, maxPrice }, location, requestQueue
         listings = findListings(sections);
 
         if (listings.length) {
-            await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, nextUrl);
+            await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, adults, children, infants, pets, nextUrl);
         }
 
         hasNextPage = pagination_metadata.has_next_page;
@@ -145,11 +161,15 @@ async function getListingsSection({ minPrice, maxPrice }, location, requestQueue
 
 /**
  * @param {{ minPrice: number, maxPrice: number }} input
+ * @param {number} adults
+ * @param {number} children
+ * @param {number} infants
+ * @param {number} pets
  * @param {number[] | string} query
  * @param {Apify.RequestQueue} requestQueue
  * @param {(...args: any) => string} buildListingUrl
  */
-async function addListings({ minPrice, maxPrice }, query, requestQueue, buildListingUrl) {
+async function addListings({ minPrice, maxPrice }, adults, children, infants, pets, query, requestQueue, buildListingUrl) {
     const intervalSize = maxPrice / HISTOGRAM_ITEMS_COUNT;
     let pivotStart = minPrice;
     let pivotEnd = intervalSize + minPrice;
@@ -159,6 +179,10 @@ async function addListings({ minPrice, maxPrice }, query, requestQueue, buildLis
             location: query,
             minPrice: pivotStart,
             maxPrice: pivotEnd,
+            adults,
+            children,
+            infants,
+            pets,
             limit: MIN_LIMIT,
             offset: 0,
         });
@@ -171,6 +195,10 @@ async function addListings({ minPrice, maxPrice }, query, requestQueue, buildLis
                 isPivoting: true,
                 pivotStart,
                 pivotEnd,
+                adults,
+                children,
+                infants,
+                pets,
                 query,
             },
         });
@@ -192,7 +220,7 @@ async function addListings({ minPrice, maxPrice }, query, requestQueue, buildLis
  * @param {(...args: any) => string} buildListingUrl
  */
 async function pivot(request, requestQueue, getRequest, buildListingUrl) {
-    const { pivotStart, pivotEnd, query } = request.userData;
+    const { pivotStart, pivotEnd, adults, children, infants, pets, query } = request.userData;
     const data = await getRequest(request.url);
     let listingCount = data.explore_tabs[0].home_tab_metadata.listings_count;
     if (listingCount === 0) {
@@ -225,6 +253,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             location: query,
             minPrice: pivotStart,
             maxPrice: intervalMiddle,
+            adults,
+            children,
+            infants,
+            pets,
             limit: MIN_LIMIT,
             offset: 0,
         });
@@ -235,6 +267,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             userData: {
                 pivotStart,
                 pivotEnd: intervalMiddle,
+                adults,
+                children,
+                infants,
+                pets,
                 isPivoting: true,
                 query,
             },
@@ -244,6 +280,10 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             location: query,
             minPrice: intervalMiddle,
             maxPrice: pivotEnd,
+            adults,
+            children,
+            infants,
+            pets,
             limit: MIN_LIMIT,
             offset: 0,
         });
@@ -254,12 +294,16 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
             userData: {
                 pivotStart: intervalMiddle,
                 pivotEnd,
+                adults,
+                children,
+                infants,
+                pets,
                 isPivoting: true,
                 query,
             } });
     } else {
         log.info(`Getting listings for start: ${pivotStart} end: ${pivotEnd}`);
-        await getListingsSection({ minPrice: pivotStart, maxPrice: pivotEnd }, query, requestQueue, getRequest, buildListingUrl);
+        await getListingsSection({ minPrice: pivotStart, maxPrice: pivotEnd }, adults, children, infants, pets, query, requestQueue, getRequest, buildListingUrl);
     }
 }
 
@@ -276,12 +320,16 @@ async function getReviews(listingId, getRequest, maxReviews) {
     const data = await req();
     data.reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
 
+    const numberOfHomes = data.metadata.reviews_count;
+    const numberOfFetches = numberOfHomes / pageSize;
+
+    if ('number' !== typeof maxReviews) {
+        maxReviews = numberOfHomes;
+    }
+
     if (results.length >= maxReviews) {
         return results.slice(0, maxReviews);
     }
-
-    const numberOfHomes = data.metadata.reviews_count;
-    const numberOfFetches = numberOfHomes / pageSize;
 
     for (let i = 0; i < numberOfFetches; i++) {
         offset += pageSize;
@@ -326,9 +374,12 @@ function validateInput(input) {
     }
 
     // check correct types
-    validate(input.locationQuery, 'string');
     validate(input.minPrice, 'number');
     validate(input.maxPrice, 'number');
+    validate(input.adults, 'number');
+    validate(input.children, 'number');
+    validate(input.infants, 'number');
+    validate(input.pets, 'number');
     validate(input.maxReviews, 'number');
     validate(input.includeReviews, 'boolean');
     validate(input.includeCalendar, 'boolean');

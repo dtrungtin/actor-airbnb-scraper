@@ -1,6 +1,7 @@
 const querystring = require('querystring');
 const moment = require('moment');
 const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
+const { parseLocationInput } = require('./helpers');
 
 /**
  * @param {{
@@ -19,6 +20,10 @@ const getBuildListingUrl = ({
      * location: (number[] | string),
      * minPrice: number,
      * maxPrice: number,
+     * adults: number,
+     * children: number,
+     * children: number,
+     * infants: number,
      * limit: number,
      * offset: number,
      * }} params
@@ -27,11 +32,16 @@ const getBuildListingUrl = ({
         location,
         minPrice = DEFAULT_MIN_PRICE,
         maxPrice = DEFAULT_MAX_PRICE,
+        adults = 0,
+        children = 0,
+        infants = 0,
+        pets = 0,
         limit = 20,
         offset = 0,
     }) => {
         const url = new URL('https://api.airbnb.com/v2/explore_tabs');
 
+        location = parseLocationInput(location);
         if (Array.isArray(location)) {
             /* eslint-disable camelcase */
             const sw_lat = location[0];
@@ -54,6 +64,22 @@ const getBuildListingUrl = ({
 
         if (typeof maxPrice === 'number' && maxPrice > minPrice) {
             url.searchParams.set('price_max', `${maxPrice}`);
+        }
+
+        if (typeof adults === 'number' && adults > 0) {
+            url.searchParams.set('adults', `${adults}`);
+        }
+
+        if (typeof children === 'number' && children > 0) {
+            url.searchParams.set('children', `${children}`);
+        }
+
+        if (typeof infants === 'number' && infants > 0) {
+            url.searchParams.set('infants', `${infants}`);
+        }
+
+        if (typeof pets === 'number' && pets > 0) {
+            url.searchParams.set('pets', `${pets}`);
         }
 
         url.searchParams.set('items_per_grid', `${limit}`);
@@ -95,11 +121,22 @@ function callForReviews(listingId, limit = 50, offset = 0) {
 function calendarMonths(listingId, checkIn) {
     const date = moment(checkIn);
 
-    return `https://api.airbnb.com/v2/calendar_months?${querystring.stringify({
-        listing_id: listingId,
-        month: date.get('month') + 1,
-        year: date.get('year'),
-        count: 1,
+    return `https://www.airbnb.cz/api/v3/PdpAvailabilityCalendar?${querystring.stringify({
+        operationName: 'PdpAvailabilityCalendar',
+        variables: JSON.stringify({
+            request: {
+                count: 12,
+                listingId,
+                month: date.get('month') + 1,
+                year: date.get('year'),
+            },
+        }),
+        extensions: JSON.stringify({
+            persistedQuery: {
+                version: 1,
+                sha256Hash: '8f08e03c7bd16fcad3c92a3592c19a8b559a0d0855a84028d1163d4733ed9ade',
+            },
+        }),
     })}`;
 }
 
