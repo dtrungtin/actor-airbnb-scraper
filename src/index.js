@@ -291,7 +291,7 @@ Apify.main(async () => {
                                             currency: base_price_breakdown[0].currency,
                                             is_micros_accuracy,
                                         },
-                                        total_price: {
+                                        total: {
                                             amount: p3_display_rate.amount,
                                             amount_formatted: p3_display_rate.amount_formatted,
                                             currency: p3_display_rate.currency,
