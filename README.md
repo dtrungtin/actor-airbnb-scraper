@@ -16,7 +16,7 @@ Following our basic plan, one Airbnb Scraper run will get you  **1,000 results f
 
 If you're not sure how much credit you've got on your plan and whether you might need to upgrade, you can always check your limits in the  _Settings_  ->  _Usage and Billing_  tab in  [your Console](https://console.apify.com/). The easiest way to know how many credits your actor will need is to perform a *test run*.
 
-## Tutorial 
+## How to use this unofficial Airbnb API 
 
 For a step-by-step guide on how to scrape Airbnb, just follow our [Airbnb Scraper tutorial](
 https://blog.apify.com/how-to-scrape-airbnb-listings-and-reviews/
