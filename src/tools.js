@@ -303,6 +303,15 @@ function meterPrecision(value) {
     return +(+`${value}`).toFixed(3);
 }
 
+function makeInputBackwardsCompatible(input) {
+    // Deprecated on 2022-4
+    if (input.includeCalendar) {
+        log.warning('The "includeCalendar" input parameter is deprecated and will be removed in the future. '
+            + 'Please use "calendarMonths" in the "input" object instead.');
+        input.calendarMonths = 1;
+    }
+}
+
 function validateInput(input) {
     const validate = (inputKey, type = 'string') => {
         const value = input[inputKey];
@@ -392,4 +401,5 @@ module.exports = {
     getSearchLocation,
     isMaxListing,
     meterPrecision,
+    makeInputBackwardsCompatible,
 };

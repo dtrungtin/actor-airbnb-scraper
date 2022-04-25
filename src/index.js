@@ -4,14 +4,16 @@ const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const csvToJson = require('csvtojson');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
-const { addListings, pivot, getReviews, validateInput, enqueueDetailLink, getSearchLocation, isMaxListing } = require('./tools');
-const { getBuildListingUrl, calendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
+const { addListings, pivot, getReviews, validateInput, enqueueDetailLink,
+    getSearchLocation, isMaxListing, makeInputBackwardsCompatible } = require('./tools');
+const { getBuildListingUrl, getCalendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
 const { cityToAreas } = require('./mapApi');
 const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
 
 Apify.main(async () => {
     const input = await Apify.getInput();
 
+    makeInputBackwardsCompatible(input);
     validateInput(input);
 
     const {
@@ -28,7 +30,7 @@ Apify.main(async () => {
         includeReviews = true,
         maxReviews = 10,
         maxListings,
-        includeCalendar = false,
+        calendarMonths = 0,
         addMoreHostInfo = false,
         debugLog = false,
         limitPoints = 1000,
@@ -271,15 +273,21 @@ Apify.main(async () => {
                         }
                     }
 
-                    if (includeCalendar) {
+                    if (calendarMonths > 0) {
                         try {
                             const { originalUrl } = request.userData;
                             const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
                                 || checkIn
                                 || new Date().toISOString();
                             log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detail.id });
-                            const { calendar_months } = await doReq(calendarMonths(detail.id, checkInDate));
-                            simpleResult.calendar = calendar_months[0].days;
+                            const { calendar_months } = await doReq(getCalendarMonths(detail.id, checkInDate, calendarMonths));
+                            const calendarDays = [];
+                            for (const month of calendar_months) {
+                                for (const day of month.days) {
+                                        calendarDays.push(day);
+                                }
+                            }
+                            simpleResult.calendar = calendarDays;
                         } catch (e) {
                             log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
                         }

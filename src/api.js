@@ -92,14 +92,14 @@ function callForReviews(listingId, limit = 50, offset = 0) {
  * @param {string} listingId
  * @param {string} checkIn
  */
-function calendarMonths(listingId, checkIn) {
+function getCalendarMonths(listingId, checkIn, months) {
     const date = moment(checkIn);
 
     return `https://api.airbnb.com/v2/calendar_months?${querystring.stringify({
         listing_id: listingId,
         month: date.get('month') + 1,
         year: date.get('year'),
-        count: 1,
+        count: months,
     })}`;
 }
 
@@ -129,7 +129,7 @@ function callForHostInfo(hostId) {
 module.exports = {
     callForReviews,
     getBuildListingUrl,
-    calendarMonths,
+    getCalendarMonths,
     bookingDetailsUrl,
     callForHostInfo,
 };

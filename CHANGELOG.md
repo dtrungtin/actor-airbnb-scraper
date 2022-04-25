@@ -1,3 +1,6 @@
+## 2022-04-25
+- Added `calendarMonths` input option and deprecated `includeCalendar`. Now you can specify how many months into the future you want to scrape.
+
 ## 1.0.1
 
 - Updated SDK version
