@@ -44,11 +44,11 @@
         "description": "Amount of reviews to be scraped for each listing.",
         "prefill": 10
       },
-      "includeCalendar": {
-        "title": "Include calendar",
-        "type": "boolean",
-        "description": "If checked, includes the available range of days",
-        "default": false
+      "calendarMonths": {
+        "title": "Calendar availability future months",
+        "type": "integer",
+        "description": "Number of months to the future that will be scraped for each listing's calendar availability. 0 means we skip calendar.",
+        "default": 0
       },
       "addMoreHostInfo": {
         "title": "Add more host information",
