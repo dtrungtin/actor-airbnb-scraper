@@ -35,6 +35,7 @@ Apify.main(async () => {
         debugLog = false,
         limitPoints = 1000,
         timeoutMs = 60000,
+        valuePairs,
     } = input;
 
     if (debugLog) {
@@ -230,6 +231,7 @@ Apify.main(async () => {
                         },
                         reviews,
                         pricing: {},
+                        valuePairs,
                     };
 
                     if (request.userData.pricing && request.userData.pricing.rate) {
