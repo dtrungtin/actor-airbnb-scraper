@@ -193,7 +193,7 @@ Apify.main(async () => {
     const crawler = new Apify.BasicCrawler({
         requestQueue,
         maxConcurrency,
-        handleRequestTimeoutSecs: 1200,
+        handleRequestTimeoutSecs: 180,
         useSessionPool: true,
         handleRequestFunction: async ({ request, session, crawler }) => {
             const { isHomeDetail, isPivoting } = request.userData;
