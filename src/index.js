@@ -202,14 +202,16 @@ Apify.main(async () => {
             if (isPivoting) {
                 await pivot(request, requestQueue, doReq, buildListingUrl);
             } else if (isHomeDetail) {
-                let failedDetailJson;
                 try {
                     let json = await doReq(request.url);
                     const { pdp_listing_detail: detail } = json;
 
                     // checking for no longer available details
-                    if (!detail) {
-                        failedDetailJson = json;
+                    if (!detail && json.error_message === 'Unfortunately, this is no longer available.') {
+                        return log.warning('Home detail is no longer available.', { url: request.url });
+                    } else if (!detail) {
+                        await Apify.setValue(`failed_${request.url}`, json);
+                        throw (`Unable to get details. Please, check key-value store to see the response. ${request.url}`);
                     }
                     log.info(`Saving home detail - ${detail.id}`);
 
@@ -337,11 +339,7 @@ Apify.main(async () => {
                         await crawler.autoscaledPool.abort();
                     }
                 } catch (e) {
-                    if (failedDetailJson && failedDetailJson.error_code === 404) {
-                        log.warning('Home detail is no longer available.', { url: request.url });
-                    } else {
-                        throw new Error(e);
-                    }
+                    throw new Error(e);
                 }
             }
         },
