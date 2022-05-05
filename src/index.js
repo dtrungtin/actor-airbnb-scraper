@@ -330,7 +330,7 @@ Apify.main(async () => {
                         await crawler.autoscaledPool.abort();
                     }
                 } catch (e) {
-                    log.exception(e, 'Could not get detail for home', { url: request.url });
+                    log.warning('Home detail is no longer available.', { url: request.url });
                 }
             }
         },
