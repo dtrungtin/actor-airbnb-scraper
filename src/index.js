@@ -193,7 +193,7 @@ Apify.main(async () => {
     const crawler = new Apify.BasicCrawler({
         requestQueue,
         maxConcurrency,
-        handleRequestTimeoutSecs: 1200,
+        handleRequestTimeoutSecs: 180,
         useSessionPool: true,
         handleRequestFunction: async ({ request, session, crawler }) => {
             const { isHomeDetail, isPivoting } = request.userData;
@@ -203,7 +203,16 @@ Apify.main(async () => {
                 await pivot(request, requestQueue, doReq, buildListingUrl);
             } else if (isHomeDetail) {
                 try {
-                    const { pdp_listing_detail: detail } = await doReq(request.url);
+                    let json = await doReq(request.url);
+                    const { pdp_listing_detail: detail } = json;
+
+                    // checking for no longer available details
+                    if (!detail && json.error_message === 'Unfortunately, this is no longer available.') {
+                        return log.warning('Home detail is no longer available.', { url: request.url });
+                    } else if (!detail) {
+                        await Apify.setValue(`failed_${request.url}`, json);
+                        throw (`Unable to get details. Please, check key-value store to see the response. ${request.url}`);
+                    }
                     log.info(`Saving home detail - ${detail.id}`);
 
                     detail.reviews = [];
@@ -330,7 +339,7 @@ Apify.main(async () => {
                         await crawler.autoscaledPool.abort();
                     }
                 } catch (e) {
-                    log.exception(e, 'Could not get detail for home', { url: request.url });
+                    throw new Error(e);
                 }
             }
         },
