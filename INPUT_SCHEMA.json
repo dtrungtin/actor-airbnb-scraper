@@ -25,7 +25,7 @@
         "default": true
       },
       "startUrls": {
-        "title": "Start URLs",
+        "title": "URL(s) of particular place (not search)",
         "type": "array",
         "description": "Urls of Airbnb details (not search urls), when set the actor will ignore locationQuery and will return results only for these listings",
         "editor": "requestListSources",
