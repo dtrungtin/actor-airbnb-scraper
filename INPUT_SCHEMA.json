@@ -376,14 +376,14 @@
         "description": "Sets filter max_price (per night) to the search query."
       },
       "checkIn": {
-        "title": "Checkin date",
+        "title": "Checkin date (yyyy-mm-dd)",
         "type": "string",
         "description": "First day of stay. Format: YYYY-MM-DD",
         "example": "YYYY-MM-DD",
         "editor": "textfield"
       },
       "checkOut": {
-        "title": "Checkout date",
+        "title": "Checkout date (yyyy-mm-dd)",
         "type": "string",
         "description": "Last day of stay. Format: YYYY-MM-DD",
         "example": "YYYY-MM-DD",
