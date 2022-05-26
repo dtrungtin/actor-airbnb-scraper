@@ -29,6 +29,10 @@
         "type": "array",
         "description": "Urls of Airbnb details (not search urls), when set the actor will ignore locationQuery and will return results only for these listings",
         "editor": "requestListSources",
+        "prefill": [
+          { "url": "https://www.airbnb.com/rooms/37288141" }
+        ],
+        "uniqueItems": true,
         "sectionCaption": "URL(s) of a specific place(s)"
       },
       "includeReviews": {
