@@ -25,8 +25,8 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
     log.info(`Listings section size: ${results.length}`);
 
     for (const l of results) {
-        const { rate, rate_type, rate_with_service_fee } = get(l, ['pricing_quote'], {});
-        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, originalUrl, { rate, rate_type, rate_with_service_fee });
+        const { rate, rate_type: rateType, rate_with_service_fee: rateWithServiceFee } = get(l, ['pricing_quote'], {});
+        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, originalUrl, { rate, rateType, rateWithServiceFee });
     }
 }
 
@@ -132,14 +132,14 @@ async function getListingsSection({ minPrice, maxPrice }, location, requestQueue
         await randomDelay();
         const { data: nextData, url: nextUrl } = await request();
         // eslint-disable-next-line camelcase
-        const { pagination_metadata, sections } = nextData.explore_tabs[0];
-        listings = findListings(sections);
+        const { pagination_metadata: nextPaginationMetadata, sections: nextSections } = nextData.explore_tabs[0];
+        listings = findListings(nextSections);
 
         if (listings.length) {
             await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, nextUrl);
         }
 
-        hasNextPage = pagination_metadata.has_next_page;
+        hasNextPage = nextPaginationMetadata.has_next_page;
     }
 }
 
@@ -274,7 +274,7 @@ async function getReviews(listingId, getRequest, maxReviews) {
     let offset = 0;
     const req = () => getRequest(callForReviews(listingId, pageSize, offset));
     const data = await req();
-    data.reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
+    data.reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
 
     if (results.length >= maxReviews) {
         return results.slice(0, maxReviews);
@@ -286,7 +286,7 @@ async function getReviews(listingId, getRequest, maxReviews) {
     for (let i = 0; i < numberOfFetches; i++) {
         offset += pageSize;
         await randomDelay();
-        (await req()).reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
+        (await req()).reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
 
         if (results.length >= maxReviews) {
             return results.slice(0, maxReviews);

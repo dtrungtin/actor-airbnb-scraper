@@ -8,7 +8,7 @@ const { addListings, pivot, getReviews, validateInput, enqueueDetailLink,
     getSearchLocation, isMaxListing, makeInputBackwardsCompatible } = require('./tools');
 const { getBuildListingUrl, getCalendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
 const { cityToAreas } = require('./mapApi');
-const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE } = require('./constants');
+const { DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE, MAX_CONCURRENCY } = require('./constants');
 
 Apify.main(async () => {
     const input = await Apify.getInput();
@@ -22,7 +22,7 @@ Apify.main(async () => {
         locationQuery,
         minPrice = DEFAULT_MIN_PRICE,
         maxPrice = DEFAULT_MAX_PRICE,
-        maxConcurrency = 50,
+        maxConcurrency = MAX_CONCURRENCY,
         checkIn,
         checkOut,
         startUrls,
@@ -58,7 +58,7 @@ Apify.main(async () => {
     /**
      * @param {Apify.Session | null} session
      */
-    const getRequest = session => async (url, opts = {}) => {
+    const getRequest = (session) => async (url, opts = {}) => {
         const getData = async (attempt = 0) => {
             let response;
 
@@ -195,7 +195,7 @@ Apify.main(async () => {
         maxConcurrency,
         handleRequestTimeoutSecs: 180,
         useSessionPool: true,
-        handleRequestFunction: async ({ request, session, crawler }) => {
+        handleRequestFunction: async ({ request, session }) => {
             const { isHomeDetail, isPivoting } = request.userData;
             const doReq = getRequest(session);
 
@@ -203,15 +203,17 @@ Apify.main(async () => {
                 await pivot(request, requestQueue, doReq, buildListingUrl);
             } else if (isHomeDetail) {
                 try {
-                    let json = await doReq(request.url);
+                    const json = await doReq(request.url);
                     const { pdp_listing_detail: detail } = json;
 
                     // checking for no longer available details
                     if (!detail && json.error_message === 'Unfortunately, this is no longer available.') {
                         return log.warning('Home detail is no longer available.', { url: request.url });
-                    } else if (!detail) {
+                    }
+
+                    if (!detail) {
                         await Apify.setValue(`failed_${request.url}`, json);
-                        throw (`Unable to get details. Please, check key-value store to see the response. ${request.url}`);
+                        throw new Error(`Unable to get details. Please, check key-value store to see the response. ${request.url}`);
                     }
                     log.info(`Saving home detail - ${detail.id}`);
 
@@ -256,7 +258,8 @@ Apify.main(async () => {
 
                             if (checkInDate && checkOutDate) {
                                 pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
-                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`, { url: pricingDetailsUrl, id: detail.id });
+                                log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`,
+                                    { url: pricingDetailsUrl, id: detail.id });
                                 const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
                                 const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
                                 const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
@@ -295,7 +298,7 @@ Apify.main(async () => {
                             const calendarDays = [];
                             for (const month of calendar_months) {
                                 for (const day of month.days) {
-                                        calendarDays.push(day);
+                                    calendarDays.push(day);
                                 }
                             }
                             simpleResult.calendar = calendarDays;
