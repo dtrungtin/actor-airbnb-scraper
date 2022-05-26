@@ -2,9 +2,10 @@ const Apify = require('apify');
 const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const moment = require('moment');
 const get = require('lodash.get');
+const csvToJson = require('csvtojson');
 const currencies = require('./currencyCodes.json');
 
-const { utils: { log } } = Apify;
+const { utils: { log, requestAsBrowser, sleep } } = Apify;
 // log.setLevel(log.LEVELS.DEBUG);
 const { callForReviews } = require('./api');
 const {
@@ -12,7 +13,164 @@ const {
     MIN_LIMIT,
     MAX_LIMIT,
     DATE_FORMAT,
+    URL_WITH_ROOMS_REGEX,
+    DEFAULT_LIMIT_POINTS,
+    DEFAULT_TIMEOUT_MILLISECONDS,
+    DEFAULT_MIN_PRICE,
+    DEFAULT_MAX_PRICE,
 } = require('./constants');
+const { cityToAreas } = require('./mapApi');
+
+/**
+ * @param {Apify.Session | null} session
+ */
+const getRequestFnc = (session, proxy) => async (url, opts = {}) => {
+    const getData = async (attempt = 0) => {
+        let response;
+
+        const options = {
+            url,
+            json: false,
+            headers: {
+                'X-Airbnb-API-Key': process.env.API_KEY,
+            },
+            proxyUrl: proxy.newUrl(session ? session.id : `airbnb_${Math.floor(Math.random() * 100000000)}`),
+            abortFunction: (res) => {
+                const { statusCode } = res;
+                return statusCode !== 200;
+            },
+            timeoutSecs: 600,
+            ...opts,
+        };
+
+        try {
+            log.debug('Requesting', { url: options.url });
+            response = await requestAsBrowser(options);
+        } catch (e) {
+            if (session) {
+                session.markBad();
+            }
+            // log.exception(e.message, 'GetData error');
+        }
+
+        const valid = !!response && !!response.body;
+        if (valid === false) {
+            if (attempt >= 10) {
+                if (session) {
+                    session.markBad();
+                }
+
+                throw new Error(`Could not get data for: ${options.url}`);
+            }
+
+            await sleep(5000);
+
+            return getData(attempt + 1);
+        }
+
+        try {
+            return JSON.parse(response.body);
+        } catch (e) {
+            await sleep(5000);
+            return getData(attempt + 1);
+        }
+    };
+
+    return getData();
+};
+
+const getStartRequestsFromUrl = async (startUrl) => {
+    const startRequests = [];
+
+    let sourceUrl = startUrl.requestsFromUrl;
+    if (startUrl.requestsFromUrl.includes('/spreadsheets/d/') && !startUrl.requestsFromUrl.includes('/gviz/tq?tqx=out:csv')) {
+        const [googlesheetLink] = startUrl.requestsFromUrl.match(/.*\/spreadsheets\/d\/.*\//);
+        sourceUrl = `${googlesheetLink}gviz/tq?tqx=out:csv`;
+    }
+    const response = await requestAsBrowser({ url: sourceUrl, encoding: 'utf8' });
+    const rows = await csvToJson({ noheader: true }).fromString(response.body);
+
+    for (const row of rows) {
+        startRequests.push({ url: row.field1 });
+    }
+
+    return startRequests;
+};
+
+const buildStartRequests = async (startUrls) => {
+    const startRequests = [];
+
+    for (const startUrl of startUrls) {
+        if (startUrl.requestsFromUrl) {
+            const startRequestsFromUrl = await getStartRequestsFromUrl(startUrl);
+            startRequests.push(...startRequestsFromUrl);
+        } else {
+            startRequests.push(startUrl);
+        }
+    }
+
+    return startRequests;
+};
+
+const enqueueDetailRequests = async (requestQueue, startUrls, { minPrice, maxPrice }) => {
+    const startRequests = await buildStartRequests(startUrls);
+    log.info(`Starting with ${startRequests.length} request${startRequests.length !== 1 ? 's' : ''}`);
+
+    const requestList = await Apify.openRequestList('STARTURLS', startRequests);
+
+    let request = await requestList.fetchNextRequest();
+
+    while (request) {
+        if (!request.url.match(RegExp(URL_WITH_ROOMS_REGEX)) && !request.url.includes('abnb.me/')) {
+            throw new Error(`Provided urls must be AirBnB room urls, got ${request.url}.
+                Valid url example: https://www.airbnb.com/rooms/37288141`);
+        }
+
+        let url;
+        if (request.url.includes('abnb.me')) {
+            const response = await requestAsBrowser({ url: request.url, encoding: 'utf8' });
+            url = response.request.options.url;
+        } else {
+            url = new URL(request.url);
+        }
+
+        const id = url.pathname.split('/').pop();
+
+        const detailRequest = buildDetailRequest(id, minPrice, maxPrice, request.url, {});
+        await requestQueue.addRequest(detailRequest);
+
+        request = await requestList.fetchNextRequest();
+    }
+};
+
+const enqueueLocationQueryRequests = async (requestQueue, input, proxy, buildListingUrlFnc) => {
+    const {
+        locationQuery,
+        maxListings,
+        minPrice = DEFAULT_MIN_PRICE,
+        maxPrice = DEFAULT_MAX_PRICE,
+        limitPoints = DEFAULT_LIMIT_POINTS,
+        timeoutMs = DEFAULT_TIMEOUT_MILLISECONDS,
+    } = input;
+
+    await addListings({ minPrice, maxPrice }, locationQuery, requestQueue, buildListingUrlFnc);
+
+    // Divide location into smaller areas to search more results
+    if (!maxListings || maxListings > 1000) {
+        const doReq = getRequestFnc(null, proxy);
+        const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrlFnc);
+        log.info(`Location query: ${cityQuery}`);
+        const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
+
+        if (areaList.length === 0) {
+            log.info('Cannot divide location query into smaller areas!');
+        } else {
+            for (const area of areaList) {
+                await addListings({ minPrice, maxPrice }, area, requestQueue, buildListingUrlFnc);
+            }
+        }
+    }
+};
 
 /**
  * @param {Array<{ listing: { id: string } }>} results
@@ -24,9 +182,10 @@ const {
 async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, originalUrl) {
     log.info(`Listings section size: ${results.length}`);
 
-    for (const l of results) {
-        const { rate, rate_type: rateType, rate_with_service_fee: rateWithServiceFee } = get(l, ['pricing_quote'], {});
-        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, originalUrl, { rate, rateType, rateWithServiceFee });
+    for (const result of results) {
+        const { rate, rate_type: rateType, rate_with_service_fee: rateWithServiceFee } = get(result, ['pricing_quote'], {});
+        const detailLink = buildDetailRequest(result.listing.id, minPrice, maxPrice, originalUrl, { rate, rateType, rateWithServiceFee });
+        await requestQueue.addRequest(detailLink);
     }
 }
 
@@ -38,10 +197,10 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
  * @param {string} originalUrl
  * @param {any} pricing
  */
-function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pricing) {
+function buildDetailRequest(id, minPrice, maxPrice, originalUrl, pricing) {
     log.debug(`Enquing home with id: ${id}`);
 
-    return requestQueue.addRequest({
+    return {
         url: `https://api.airbnb.com/v2/pdp_listing_details/${id}?_format=for_native`,
         userData: {
             isHomeDetail: true,
@@ -51,7 +210,7 @@ function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pr
             id,
             originalUrl,
         },
-    });
+    };
 }
 
 function randomDelay(minimum = 100, maximum = 200) {
@@ -393,11 +552,14 @@ async function isMaxListing(maxListings) {
 }
 
 module.exports = {
+    getRequestFnc,
+    enqueueDetailRequests,
+    enqueueLocationQueryRequests,
     addListings,
     pivot,
     getReviews,
     validateInput,
-    enqueueDetailLink,
+    buildDetailRequest,
     getSearchLocation,
     isMaxListing,
     meterPrecision,

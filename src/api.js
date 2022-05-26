@@ -8,7 +8,7 @@ const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
  *   currency: string,
  * }} params
  */
-const getBuildListingUrl = ({
+const getBuildListingUrlFnc = ({
     checkIn,
     checkOut,
     currency = 'USD',
@@ -128,7 +128,7 @@ function callForHostInfo(hostId) {
 
 module.exports = {
     callForReviews,
-    getBuildListingUrl,
+    getBuildListingUrlFnc,
     getCalendarMonths,
     bookingDetailsUrl,
     callForHostInfo,
