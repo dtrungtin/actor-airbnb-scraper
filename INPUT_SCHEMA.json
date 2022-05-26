@@ -1,7 +1,7 @@
 {
     "title": "Airbnb Scraper input",
     "description": "Just change the location you are interested in, click on run and your data is on its way!",
-    "type": "object",
+    "type": "object", 
     "schemaVersion": 1,
     "properties": {
       "locationQuery": {
