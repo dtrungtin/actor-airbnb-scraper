@@ -260,24 +260,25 @@ Apify.main(async () => {
                                 pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
                                 log.info(`Requesting pricing details from ${checkInDate} to ${checkInDate}`,
                                     { url: pricingDetailsUrl, id: detail.id });
-                                const { pdp_listing_booking_details } = await doReq(pricingDetailsUrl);
-                                const { available, rate_type, base_price_breakdown } = pdp_listing_booking_details[0];
-                                const { amount, amount_formatted, is_micros_accuracy } = base_price_breakdown[0];
+                                const pricingResult = await doReq(pricingDetailsUrl);
+                                const { pdp_listing_booking_details } = pricingResult;
+                                const { available, rate_type: rateType, base_price_breakdown } = pdp_listing_booking_details[0];
+                                const { amount, amount_formatted: amountFormatted, is_micros_accuracy: isMicrosAccuracy } = base_price_breakdown[0];
 
                                 if (available) {
                                     simpleResult.pricing = {
                                         rate: {
                                             amount,
-                                            amount_formatted,
+                                            amountFormatted,
                                             currency: base_price_breakdown[0].currency,
-                                            is_micros_accuracy,
+                                            isMicrosAccuracy,
                                         },
-                                        rate_type,
-                                        rate_with_service_fee: {
+                                        rateType,
+                                        rateWithServiceFee: {
                                             amount,
-                                            amount_formatted,
+                                            amountFormatted,
                                             currency: base_price_breakdown[0].currency,
-                                            is_micros_accuracy,
+                                            isMicrosAccuracy,
                                         },
                                     };
                                 }
