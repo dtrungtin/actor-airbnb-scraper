@@ -21,6 +21,7 @@ const {
     DEFAULT_CALENDAR_MONTHS,
     MAX_CONCURRENCY,
     HANDLE_REQUEST_TIMEOUT_SECS,
+    MAX_KEY_LENGTH,
 } = require('./constants');
 
 Apify.main(async () => {
@@ -93,20 +94,14 @@ Apify.main(async () => {
                 }
 
                 if (!detail) {
-                    await Apify.setValue(`failed_${request.url}`, json);
+                    const requestUrl = new URL(request.url);
+                    await Apify.setValue(`failed_${requestUrl.origin}${result.pathname}`.substring(0, MAX_KEY_LENGTH), json);
                     throw new Error(`Unable to get details. Please, check key-value store to see the response. ${request.url}`);
                 }
+
                 log.info(`Saving home detail - ${detail.id}`);
 
-                detail.reviews = [];
-
-                if (includeReviews) {
-                    try {
-                        detail.reviews = await getReviews(request.userData.id, doReq, maxReviews);
-                    } catch (e) {
-                        log.exception(e, 'Could not get reviews');
-                    }
-                }
+                detail.reviews = includeReviews ? await getReviews(request.userData.id, doReq, maxReviews) : [];
 
                 const result = camelcaseKeysRecursive(detail);
                 const { locationTitle, starRating, guestLabel, p3SummaryTitle, lat, lng, roomAndPropertyType, reviews } = result;

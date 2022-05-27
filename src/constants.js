@@ -12,6 +12,7 @@ const HANDLE_REQUEST_TIMEOUT_SECS = 180;
 const DATE_FORMAT = 'YYYY-MM-DD';
 const DISTANCE_METERS = 1000;
 const URL_WITH_ROOMS_REGEX = /airbnb\.(.)+\/rooms/g;
+const MAX_KEY_LENGTH = 256;
 
 module.exports = {
     MAX_LIMIT,
@@ -28,4 +29,5 @@ module.exports = {
     MIN_LIMIT,
     DISTANCE_METERS,
     URL_WITH_ROOMS_REGEX,
+    MAX_KEY_LENGTH,
 };
