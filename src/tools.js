@@ -429,27 +429,32 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
  */
 async function getReviews(listingId, getRequest, maxReviews) {
     const results = [];
-    const pageSize = MAX_LIMIT;
-    let offset = 0;
-    const req = () => getRequest(callForReviews(listingId, pageSize, offset));
-    const data = await req();
-    data.reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
 
-    if (results.length >= maxReviews) {
-        return results.slice(0, maxReviews);
-    }
-
-    const numberOfHomes = data.metadata.reviews_count;
-    const numberOfFetches = numberOfHomes / pageSize;
-
-    for (let i = 0; i < numberOfFetches; i++) {
-        offset += pageSize;
-        await randomDelay();
-        (await req()).reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
+    try {
+        const pageSize = MAX_LIMIT;
+        let offset = 0;
+        const req = () => getRequest(callForReviews(listingId, pageSize, offset));
+        const data = await req();
+        data.reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
 
         if (results.length >= maxReviews) {
             return results.slice(0, maxReviews);
         }
+
+        const numberOfHomes = data.metadata.reviews_count;
+        const numberOfFetches = numberOfHomes / pageSize;
+
+        for (let i = 0; i < numberOfFetches; i++) {
+            offset += pageSize;
+            await randomDelay();
+            (await req()).reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
+
+            if (results.length >= maxReviews) {
+                return results.slice(0, maxReviews);
+            }
+        }
+    } catch (e) {
+        log.exception(e, 'Could not get reviews');
     }
 
     return results;

@@ -95,7 +95,7 @@ Apify.main(async () => {
 
                 if (!detail) {
                     const requestUrl = new URL(request.url);
-                    await Apify.setValue(`failed_${requestUrl.origin}${result.pathname}`.substring(0, MAX_KEY_LENGTH), json);
+                    await Apify.setValue(`failed_${requestUrl.origin}${requestUrl.pathname}`.substring(0, MAX_KEY_LENGTH), json);
                     throw new Error(`Unable to get details. Please, check key-value store to see the response. ${request.url}`);
                 }
 
