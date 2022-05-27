@@ -95,7 +95,7 @@ Apify.main(async () => {
 
                 if (!detail) {
                     const requestUrl = new URL(request.url);
-                    const requestKey = `${requestUrl.origin}${requestUrl.pathname}`
+                    const requestKey = `${requestUrl.host}${requestUrl.pathname}`
                         .substring(0, MAX_KEY_LENGTH)
                         .replaceAll('/', '-'); // '/' is not allowed in key name
                     await Apify.setValue(`failed_${requestKey}`, json);
