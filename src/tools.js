@@ -1,5 +1,4 @@
 const Apify = require('apify');
-const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const moment = require('moment');
 const get = require('lodash.get');
 const csvToJson = require('csvtojson');
@@ -18,18 +17,22 @@ const {
     DEFAULT_TIMEOUT_MILLISECONDS,
     DEFAULT_MIN_PRICE,
     DEFAULT_MAX_PRICE,
+    DEFAULT_LOCALE,
 } = require('./constants');
 const { cityToAreas } = require('./mapApi');
+const { getLocale } = require('./localization');
 
 /**
  * @param {Apify.Session | null} session
  */
-const getRequestFnc = (session, proxy) => async (url, opts = {}) => {
+const getRequestFnc = (session, proxy, locale = DEFAULT_LOCALE) => async (url, opts = {}) => {
     const getData = async (attempt = 0) => {
         let response;
+        const requestUrl = new URL(url);
+        requestUrl.searchParams.set('locale', locale);
 
         const options = {
-            url,
+            url: requestUrl.toString(),
             json: false,
             headers: {
                 'X-Airbnb-API-Key': process.env.API_KEY,
@@ -184,7 +187,9 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
 
     for (const result of results) {
         const { rate, rate_type: rateType, rate_with_service_fee: rateWithServiceFee } = get(result, ['pricing_quote'], {});
+
         const detailLink = buildDetailRequest(result.listing.id, minPrice, maxPrice, originalUrl, { rate, rateType, rateWithServiceFee });
+        log.debug(`Enquing home with id: ${result.listing.id}`);
         await requestQueue.addRequest(detailLink);
     }
 }
@@ -198,7 +203,7 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
  * @param {any} pricing
  */
 function buildDetailRequest(id, minPrice, maxPrice, originalUrl, pricing) {
-    log.debug(`Enquing home with id: ${id}`);
+    const locale = getLocale(originalUrl);
 
     return {
         url: `https://api.airbnb.com/v2/pdp_listing_details/${id}?_format=for_native`,
@@ -209,6 +214,7 @@ function buildDetailRequest(id, minPrice, maxPrice, originalUrl, pricing) {
             pricing,
             id,
             originalUrl,
+            locale,
         },
     };
 }
@@ -422,6 +428,52 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
     }
 }
 
+const getFormattedUser = (apiUser) => {
+    return {
+        firstName: apiUser.firstName,
+        hasProfilePic: apiUser.userProfilePicture !== {},
+        id: apiUser.id,
+        pictureUrl: apiUser.pictureUrl,
+        smartName: apiUser.hostName,
+        thumbnailUrl: apiUser.pictureUrl.replace('profile_x_medium', 'profile_small'),
+    };
+};
+
+const getFormattedReview = (apiReview) => {
+    const {
+        reviewer,
+        authorId,
+        comments,
+        createdAt,
+        id,
+        collectionTag,
+        rating,
+        reviewee,
+        response,
+        localizedDate,
+    } = apiReview;
+
+    const localizedReview = apiReview.localizedReview || {};
+    const { comments: localizedComments, commentsLanguage: language, disclaimer, needsTranslation, response: localizedResponse } = localizedReview;
+
+    return {
+        author: getFormattedUser(reviewer),
+        authorId,
+        comments,
+        createdAt,
+        id,
+        collectionTag,
+        rating,
+        recipient: getFormattedUser(reviewee),
+        response,
+        language,
+        localizedDate,
+        localizedReview: apiReview.localizedReview
+            ? { comments: localizedComments, disclaimer, needsTranslation, response: localizedResponse }
+            : null,
+    };
+};
+
 /**
  * @param {string} listingId
  * @param {(...args: any) => Promise<any>} getRequest
@@ -434,20 +486,23 @@ async function getReviews(listingId, getRequest, maxReviews) {
         const pageSize = MAX_LIMIT;
         let offset = 0;
         const req = () => getRequest(callForReviews(listingId, pageSize, offset));
-        const data = await req();
-        data.reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
+        const response = await req();
+        await Apify.setValue('REVIEWS', response);
+
+        const { reviews, metadata } = response.data.merlin.pdpReviews;
+        reviews.forEach((rev) => results.push(getFormattedReview(rev)));
 
         if (results.length >= maxReviews) {
             return results.slice(0, maxReviews);
         }
 
-        const numberOfHomes = data.metadata.reviews_count;
+        const numberOfHomes = metadata.reviews_count;
         const numberOfFetches = numberOfHomes / pageSize;
 
         for (let i = 0; i < numberOfFetches; i++) {
             offset += pageSize;
             await randomDelay();
-            (await req()).reviews.forEach((rev) => results.push(camelcaseKeysRecursive(rev)));
+            (await req()).reviews.forEach((rev) => results.push(getFormattedReview(rev)));
 
             if (results.length >= maxReviews) {
                 return results.slice(0, maxReviews);

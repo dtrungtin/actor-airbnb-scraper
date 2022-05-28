@@ -22,6 +22,7 @@ const {
     MAX_CONCURRENCY,
     HANDLE_REQUEST_TIMEOUT_SECS,
     MAX_KEY_LENGTH,
+    DEFAULT_LOCALE,
 } = require('./constants');
 
 Apify.main(async () => {
@@ -79,8 +80,9 @@ Apify.main(async () => {
         handleRequestTimeoutSecs: HANDLE_REQUEST_TIMEOUT_SECS,
         useSessionPool: true,
         handleRequestFunction: async ({ request, session }) => {
-            const { isHomeDetail, isPivoting } = request.userData;
-            const doReq = getRequestFnc(session, proxy);
+            const { isHomeDetail, isPivoting, locale = DEFAULT_LOCALE } = request.userData;
+
+            const doReq = getRequestFnc(session, proxy, locale);
 
             if (isPivoting) {
                 await pivot(request, requestQueue, doReq, buildListingUrlFnc);

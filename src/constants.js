@@ -4,6 +4,7 @@ const DEFAULT_MAX_REVIEWS = 10;
 const DEFAULT_CALENDAR_MONTHS = 0;
 const DEFAULT_LIMIT_POINTS = 1000;
 const DEFAULT_TIMEOUT_MILLISECONDS = 60000;
+const DEFAULT_LOCALE = 'en';
 const HISTOGRAM_ITEMS_COUNT = 10;
 const MIN_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -11,8 +12,11 @@ const MAX_CONCURRENCY = 50;
 const HANDLE_REQUEST_TIMEOUT_SECS = 180;
 const DATE_FORMAT = 'YYYY-MM-DD';
 const DISTANCE_METERS = 1000;
-const URL_WITH_ROOMS_REGEX = /airbnb\.(.)+\/rooms/g;
+const URL_WITH_ROOMS_REGEX = /airbnb\.(.)+\/rooms/gi;
+const URL_DOMAIN_REGEX = /airbnb(?:\.[a-z]{2,3})?\.([a-z]{2})\//gi;
+const URL_LOCALE_PREFIX_REGEX = /(?:w{3})?([a-z-.]*)\.airbnb/gi;
 const MAX_KEY_LENGTH = 256;
+const SHA_256_HASH = 'ecf7222b1ad7e13da1bf39cf3cf05daa6bbc88709f06ea9cf669deca7e2e2de2';
 
 module.exports = {
     MAX_LIMIT,
@@ -23,11 +27,15 @@ module.exports = {
     DEFAULT_CALENDAR_MONTHS,
     DEFAULT_LIMIT_POINTS,
     DEFAULT_TIMEOUT_MILLISECONDS,
+    DEFAULT_LOCALE,
     HANDLE_REQUEST_TIMEOUT_SECS,
     HISTOGRAM_ITEMS_COUNT,
     DATE_FORMAT,
     MIN_LIMIT,
     DISTANCE_METERS,
     URL_WITH_ROOMS_REGEX,
+    URL_LOCALE_PREFIX_REGEX,
+    URL_DOMAIN_REGEX,
     MAX_KEY_LENGTH,
+    SHA_256_HASH,
 };
