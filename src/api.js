@@ -1,5 +1,5 @@
 const moment = require('moment');
-const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
+const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE, SHA_256_HASH } = require('./constants');
 
 /**
  * @param {{
@@ -77,14 +77,15 @@ const getBuildListingUrlFnc = ({
 
 function callForReviews(listingId, limit = 50, offset = 0) {
     const reviewsUrlParams = new URLSearchParams({
-        _order: 'language_country',
-        _limit: limit,
-        _offset: offset,
-        _format: 'for_mobile_client',
-        role: 'all',
-        listing_id: listingId,
+        operationName: 'PdpReviews',
+        variables: JSON.stringify({
+            request: { fieldSelector: 'for_p3_translation_only', limit, offset, listingId },
+        }),
+        extensions: JSON.stringify({
+            persistedQuery: { version: 1, sha256Hash: SHA_256_HASH },
+        }),
     });
-    return `https://api.airbnb.com/v2/reviews?${reviewsUrlParams.toString()}`;
+    return `https://www.airbnb.cz/api/v3/PdpReviews?${reviewsUrlParams.toString()}`;
 }
 
 /**
