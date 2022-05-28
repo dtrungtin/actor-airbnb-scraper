@@ -13,8 +13,21 @@ const HANDLE_REQUEST_TIMEOUT_SECS = 180;
 const DATE_FORMAT = 'YYYY-MM-DD';
 const DISTANCE_METERS = 1000;
 const URL_WITH_ROOMS_REGEX = /airbnb\.(.)+\/rooms/gi;
+
+/**
+ * Matches end of the domain from url formats:
+ * https://airbnb.cz/rooms/37288141 (domain = cz),
+ * https://www.airbnb.co.id/rooms/37288141 (domain = id),
+ * https://www.airbnb.com.ar/rooms/37288141 (domain = ar)
+ */
 const URL_DOMAIN_REGEX = /airbnb(?:\.[a-z]{2,3})?\.([a-z]{2})\//gi;
-const URL_LOCALE_PREFIX_REGEX = /(?:w{3})?([a-z-.]*)\.airbnb/gi;
+
+/**
+ * Matches locale from url format: https://cs.airbnb.com/rooms/37288141 (locale = cs).
+ * Ignores www.airbnb or api.airbnb (www nor api should be considered locale).
+ */
+const URL_LOCALE_PREFIX_REGEX = /\/\/(?:w{3})?(?:api)?([a-z]{2})\.airbnb/gi;
+
 const MAX_KEY_LENGTH = 256;
 const SHA_256_HASH = 'ecf7222b1ad7e13da1bf39cf3cf05daa6bbc88709f06ea9cf669deca7e2e2de2';
 
