@@ -12,8 +12,10 @@ const {
     getRequestFnc,
     enqueueDetailRequests,
     enqueueLocationQueryRequests,
+    getCalendar,
+    calculateOccupancyPercentage,
 } = require('./tools');
-const { getBuildListingUrlFnc, getCalendarMonths, bookingDetailsUrl, callForHostInfo } = require('./api');
+const { getBuildListingUrlFnc, bookingDetailsUrl, callForHostInfo } = require('./api');
 const {
     DEFAULT_MAX_PRICE,
     DEFAULT_MIN_PRICE,
@@ -170,22 +172,8 @@ Apify.main(async () => {
                 }
 
                 if (calendarMonths > 0) {
-                    try {
-                        const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
-                                || checkIn
-                                || new Date().toISOString().substring(0, 10);
-                        log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detail.id });
-                        const { calendar_months } = await doReq(getCalendarMonths(detail.id, checkInDate, calendarMonths));
-                        const calendarDays = [];
-                        for (const month of calendar_months) {
-                            for (const day of month.days) {
-                                calendarDays.push(day);
-                            }
-                        }
-                        simpleResult.calendar = calendarDays;
-                    } catch (e) {
-                        log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detail.id });
-                    }
+                    simpleResult.calendar = await getCalendar(request, detail.id, checkIn, calendarMonths, doReq);
+                    simpleResult.occupancyPercentage = calculateOccupancyPercentage(simpleResult.calendar);
                 }
 
                 if (addMoreHostInfo && result.primaryHost) {

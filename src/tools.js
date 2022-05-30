@@ -6,7 +6,7 @@ const currencies = require('./currencyCodes.json');
 
 const { utils: { log, requestAsBrowser, sleep } } = Apify;
 // log.setLevel(log.LEVELS.DEBUG);
-const { callForReviews } = require('./api');
+const { callForReviews, getCalendarMonths } = require('./api');
 const {
     HISTOGRAM_ITEMS_COUNT,
     MIN_LIMIT,
@@ -515,6 +515,52 @@ async function getReviews(listingId, getRequest, maxReviews) {
     return results;
 }
 
+async function getCalendar(request, detailId, checkIn, calendarMonths, doReq) {
+    const { userData: { originalUrl } } = request;
+    const calendarDays = [];
+
+    try {
+        const checkInDate = (originalUrl ? new URL(originalUrl, 'https://www.airbnb.com').searchParams.get('check_in') : false)
+                || checkIn
+                || new Date().toISOString().substring(0, 10);
+
+        log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detailId });
+        const { calendar_months: months } = await doReq(getCalendarMonths(detailId, checkInDate, calendarMonths));
+
+        const now = moment();
+
+        for (const month of months) {
+            for (const day of month.days) {
+                const date = moment(day.date);
+                if (date.isSameOrAfter(now)) {
+                    // Airbnb stores `availability: false` for all days prior to the current date
+                    calendarDays.push(day);
+                }
+            }
+        }
+    } catch (e) {
+        log.exception(e, 'Error while retrieving calendar', { url: request.url, id: detailId });
+    }
+
+    return calendarDays;
+}
+
+function calculateOccupancyPercentage(calendarDays) {
+    let unavailableDays = 0;
+
+    calendarDays.forEach(({ available }) => {
+        if (!available) {
+            unavailableDays++;
+        }
+    });
+
+    const FULLY_OCCUPIED_PERCENTAGE = 100;
+
+    return calendarDays.length > 0
+        ? ((unavailableDays / calendarDays.length) * 100).toFixed(2)
+        : FULLY_OCCUPIED_PERCENTAGE;
+}
+
 /**
  * Converts floating geopoint to ~113m precision (3 decimals)
  */
@@ -618,6 +664,8 @@ module.exports = {
     addListings,
     pivot,
     getReviews,
+    getCalendar,
+    calculateOccupancyPercentage,
     validateInput,
     buildDetailRequest,
     getSearchLocation,
