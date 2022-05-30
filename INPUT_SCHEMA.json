@@ -54,7 +54,10 @@
         "title": "Calendar availability future months",
         "type": "integer",
         "description": "Number of months to the future that will be scraped for each listing's calendar availability. 0 means we skip calendar.",
-        "default": 0
+        "default": 0,
+        "prefill": 0,
+        "minimum": 0,
+        "maximum": 12
       },
       "addMoreHostInfo": {
         "title": "Add more host information",
