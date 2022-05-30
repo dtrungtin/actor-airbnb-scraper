@@ -1,6 +1,5 @@
-const querystring = require('querystring');
 const moment = require('moment');
-const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
+const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE, SHA_256_HASH } = require('./constants');
 
 /**
  * @param {{
@@ -9,7 +8,7 @@ const { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } = require('./constants');
  *   currency: string,
  * }} params
  */
-const getBuildListingUrl = ({
+const getBuildListingUrlFnc = ({
     checkIn,
     checkOut,
     currency = 'USD',
@@ -77,15 +76,16 @@ const getBuildListingUrl = ({
 };
 
 function callForReviews(listingId, limit = 50, offset = 0) {
-    const queryString = {
-        _order: 'language_country',
-        _limit: limit,
-        _offset: offset,
-        _format: 'for_mobile_client',
-        role: 'all',
-        listing_id: listingId,
-    };
-    return `https://api.airbnb.com/v2/reviews?${querystring.stringify(queryString)}`;
+    const reviewsUrlParams = new URLSearchParams({
+        operationName: 'PdpReviews',
+        variables: JSON.stringify({
+            request: { fieldSelector: 'for_p3_translation_only', limit, offset, listingId },
+        }),
+        extensions: JSON.stringify({
+            persistedQuery: { version: 1, sha256Hash: SHA_256_HASH },
+        }),
+    });
+    return `https://www.airbnb.cz/api/v3/PdpReviews?${reviewsUrlParams.toString()}`;
 }
 
 /**
@@ -95,12 +95,13 @@ function callForReviews(listingId, limit = 50, offset = 0) {
 function getCalendarMonths(listingId, checkIn, months) {
     const date = moment(checkIn);
 
-    return `https://api.airbnb.com/v2/calendar_months?${querystring.stringify({
+    const calendarUrlParams = new URLSearchParams({
         listing_id: listingId,
         month: date.get('month') + 1,
         year: date.get('year'),
         count: months,
-    })}`;
+    });
+    return `https://api.airbnb.com/v2/calendar_months?${calendarUrlParams.toString()}`;
 }
 
 /**
@@ -109,14 +110,14 @@ function getCalendarMonths(listingId, checkIn, months) {
  * @param {string} checkOut
  */
 function bookingDetailsUrl(listingId, checkIn, checkOut) {
-    const queryString = {
+    const bookingDetailsUrlParams = new URLSearchParams({
         check_in: checkIn,
         check_out: checkOut,
         _format: 'for_web_with_date',
         listing_id: listingId,
-    };
+    });
 
-    return `https://api.airbnb.com/v2/pdp_listing_booking_details?${querystring.stringify(queryString)}`;
+    return `https://api.airbnb.com/v2/pdp_listing_booking_details?${bookingDetailsUrlParams.toString()}`;
 }
 
 /**
@@ -128,7 +129,7 @@ function callForHostInfo(hostId) {
 
 module.exports = {
     callForReviews,
-    getBuildListingUrl,
+    getBuildListingUrlFnc,
     getCalendarMonths,
     bookingDetailsUrl,
     callForHostInfo,

@@ -1,10 +1,10 @@
 const Apify = require('apify');
-const camelcaseKeysRecursive = require('camelcase-keys-recursive');
 const moment = require('moment');
 const get = require('lodash.get');
+const csvToJson = require('csvtojson');
 const currencies = require('./currencyCodes.json');
 
-const { utils: { log } } = Apify;
+const { utils: { log, requestAsBrowser, sleep } } = Apify;
 // log.setLevel(log.LEVELS.DEBUG);
 const { callForReviews } = require('./api');
 const {
@@ -12,7 +12,168 @@ const {
     MIN_LIMIT,
     MAX_LIMIT,
     DATE_FORMAT,
+    URL_WITH_ROOMS_REGEX,
+    DEFAULT_LIMIT_POINTS,
+    DEFAULT_TIMEOUT_MILLISECONDS,
+    DEFAULT_MIN_PRICE,
+    DEFAULT_MAX_PRICE,
+    DEFAULT_LOCALE,
 } = require('./constants');
+const { cityToAreas } = require('./mapApi');
+const { getLocale } = require('./localization');
+
+/**
+ * @param {Apify.Session | null} session
+ */
+const getRequestFnc = (session, proxy, locale = DEFAULT_LOCALE) => async (url, opts = {}) => {
+    const getData = async (attempt = 0) => {
+        let response;
+        const requestUrl = new URL(url);
+        requestUrl.searchParams.set('locale', locale);
+
+        const options = {
+            url: requestUrl.toString(),
+            json: false,
+            headers: {
+                'X-Airbnb-API-Key': process.env.API_KEY,
+            },
+            proxyUrl: proxy.newUrl(session ? session.id : `airbnb_${Math.floor(Math.random() * 100000000)}`),
+            abortFunction: (res) => {
+                const { statusCode } = res;
+                return statusCode !== 200;
+            },
+            timeoutSecs: 600,
+            ...opts,
+        };
+
+        try {
+            log.debug('Requesting', { url: options.url });
+            response = await requestAsBrowser(options);
+        } catch (e) {
+            if (session) {
+                session.markBad();
+            }
+            // log.exception(e.message, 'GetData error');
+        }
+
+        const valid = !!response && !!response.body;
+        if (valid === false) {
+            if (attempt >= 10) {
+                if (session) {
+                    session.markBad();
+                }
+
+                throw new Error(`Could not get data for: ${options.url}`);
+            }
+
+            await sleep(5000);
+
+            return getData(attempt + 1);
+        }
+
+        try {
+            return JSON.parse(response.body);
+        } catch (e) {
+            await sleep(5000);
+            return getData(attempt + 1);
+        }
+    };
+
+    return getData();
+};
+
+const getStartRequestsFromUrl = async (startUrl) => {
+    const startRequests = [];
+
+    let sourceUrl = startUrl.requestsFromUrl;
+    if (startUrl.requestsFromUrl.includes('/spreadsheets/d/') && !startUrl.requestsFromUrl.includes('/gviz/tq?tqx=out:csv')) {
+        const [googlesheetLink] = startUrl.requestsFromUrl.match(/.*\/spreadsheets\/d\/.*\//);
+        sourceUrl = `${googlesheetLink}gviz/tq?tqx=out:csv`;
+    }
+    const response = await requestAsBrowser({ url: sourceUrl, encoding: 'utf8' });
+    const rows = await csvToJson({ noheader: true }).fromString(response.body);
+
+    for (const row of rows) {
+        startRequests.push({ url: row.field1 });
+    }
+
+    return startRequests;
+};
+
+const buildStartRequests = async (startUrls) => {
+    const startRequests = [];
+
+    for (const startUrl of startUrls) {
+        if (startUrl.requestsFromUrl) {
+            const startRequestsFromUrl = await getStartRequestsFromUrl(startUrl);
+            startRequests.push(...startRequestsFromUrl);
+        } else {
+            startRequests.push(startUrl);
+        }
+    }
+
+    return startRequests;
+};
+
+const enqueueDetailRequests = async (requestQueue, startUrls, { minPrice, maxPrice }) => {
+    const startRequests = await buildStartRequests(startUrls);
+    log.info(`Starting with ${startRequests.length} request${startRequests.length !== 1 ? 's' : ''}`);
+
+    const requestList = await Apify.openRequestList('STARTURLS', startRequests);
+
+    let request = await requestList.fetchNextRequest();
+
+    while (request) {
+        if (!request.url.match(RegExp(URL_WITH_ROOMS_REGEX)) && !request.url.includes('abnb.me/')) {
+            throw new Error(`Provided urls must be AirBnB room urls, got ${request.url}.
+                Valid url example: https://www.airbnb.com/rooms/37288141`);
+        }
+
+        let url;
+        if (request.url.includes('abnb.me')) {
+            const response = await requestAsBrowser({ url: request.url, encoding: 'utf8' });
+            url = response.request.options.url;
+        } else {
+            url = new URL(request.url);
+        }
+
+        const id = url.pathname.split('/').pop();
+
+        const detailRequest = buildDetailRequest(id, minPrice, maxPrice, request.url, {});
+        await requestQueue.addRequest(detailRequest);
+
+        request = await requestList.fetchNextRequest();
+    }
+};
+
+const enqueueLocationQueryRequests = async (requestQueue, input, proxy, buildListingUrlFnc) => {
+    const {
+        locationQuery,
+        maxListings,
+        minPrice = DEFAULT_MIN_PRICE,
+        maxPrice = DEFAULT_MAX_PRICE,
+        limitPoints = DEFAULT_LIMIT_POINTS,
+        timeoutMs = DEFAULT_TIMEOUT_MILLISECONDS,
+    } = input;
+
+    await addListings({ minPrice, maxPrice }, locationQuery, requestQueue, buildListingUrlFnc);
+
+    // Divide location into smaller areas to search more results
+    if (!maxListings || maxListings > 1000) {
+        const doReq = getRequestFnc(null, proxy);
+        const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrlFnc);
+        log.info(`Location query: ${cityQuery}`);
+        const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
+
+        if (areaList.length === 0) {
+            log.info('Cannot divide location query into smaller areas!');
+        } else {
+            for (const area of areaList) {
+                await addListings({ minPrice, maxPrice }, area, requestQueue, buildListingUrlFnc);
+            }
+        }
+    }
+};
 
 /**
  * @param {Array<{ listing: { id: string } }>} results
@@ -24,9 +185,12 @@ const {
 async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPrice, originalUrl) {
     log.info(`Listings section size: ${results.length}`);
 
-    for (const l of results) {
-        const { rate, rate_type, rate_with_service_fee } = get(l, ['pricing_quote'], {});
-        await enqueueDetailLink(l.listing.id, requestQueue, minPrice, maxPrice, originalUrl, { rate, rate_type, rate_with_service_fee });
+    for (const result of results) {
+        const { rate, rate_type: rateType, rate_with_service_fee: rateWithServiceFee } = get(result, ['pricing_quote'], {});
+
+        const detailLink = buildDetailRequest(result.listing.id, minPrice, maxPrice, originalUrl, { rate, rateType, rateWithServiceFee });
+        log.debug(`Enquing home with id: ${result.listing.id}`);
+        await requestQueue.addRequest(detailLink);
     }
 }
 
@@ -38,10 +202,10 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
  * @param {string} originalUrl
  * @param {any} pricing
  */
-function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pricing) {
-    log.debug(`Enquing home with id: ${id}`);
+function buildDetailRequest(id, minPrice, maxPrice, originalUrl, pricing) {
+    const locale = getLocale(originalUrl);
 
-    return requestQueue.addRequest({
+    return {
         url: `https://api.airbnb.com/v2/pdp_listing_details/${id}?_format=for_native`,
         userData: {
             isHomeDetail: true,
@@ -50,8 +214,9 @@ function enqueueDetailLink(id, requestQueue, minPrice, maxPrice, originalUrl, pr
             pricing,
             id,
             originalUrl,
+            locale,
         },
-    });
+    };
 }
 
 function randomDelay(minimum = 100, maximum = 200) {
@@ -132,14 +297,14 @@ async function getListingsSection({ minPrice, maxPrice }, location, requestQueue
         await randomDelay();
         const { data: nextData, url: nextUrl } = await request();
         // eslint-disable-next-line camelcase
-        const { pagination_metadata, sections } = nextData.explore_tabs[0];
-        listings = findListings(sections);
+        const { pagination_metadata: nextPaginationMetadata, sections: nextSections } = nextData.explore_tabs[0];
+        listings = findListings(nextSections);
 
         if (listings.length) {
             await enqueueListingsFromSection(listings, requestQueue, minPrice, maxPrice, nextUrl);
         }
 
-        hasNextPage = pagination_metadata.has_next_page;
+        hasNextPage = nextPaginationMetadata.has_next_page;
     }
 }
 
@@ -263,6 +428,52 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
     }
 }
 
+const getFormattedUser = (apiUser) => {
+    return {
+        firstName: apiUser.firstName,
+        hasProfilePic: apiUser.userProfilePicture !== {},
+        id: apiUser.id,
+        pictureUrl: apiUser.pictureUrl,
+        smartName: apiUser.hostName,
+        thumbnailUrl: apiUser.pictureUrl.replace('profile_x_medium', 'profile_small'),
+    };
+};
+
+const getFormattedReview = (apiReview) => {
+    const {
+        reviewer,
+        authorId,
+        comments,
+        createdAt,
+        id,
+        collectionTag,
+        rating,
+        reviewee,
+        response,
+        localizedDate,
+    } = apiReview;
+
+    const localizedReview = apiReview.localizedReview || {};
+    const { comments: localizedComments, commentsLanguage: language, disclaimer, needsTranslation, response: localizedResponse } = localizedReview;
+
+    return {
+        author: getFormattedUser(reviewer),
+        authorId,
+        comments,
+        createdAt,
+        id,
+        collectionTag,
+        rating,
+        recipient: getFormattedUser(reviewee),
+        response,
+        language,
+        localizedDate,
+        localizedReview: apiReview.localizedReview
+            ? { comments: localizedComments, disclaimer, needsTranslation, response: localizedResponse }
+            : null,
+    };
+};
+
 /**
  * @param {string} listingId
  * @param {(...args: any) => Promise<any>} getRequest
@@ -270,27 +481,35 @@ async function pivot(request, requestQueue, getRequest, buildListingUrl) {
  */
 async function getReviews(listingId, getRequest, maxReviews) {
     const results = [];
-    const pageSize = MAX_LIMIT;
-    let offset = 0;
-    const req = () => getRequest(callForReviews(listingId, pageSize, offset));
-    const data = await req();
-    data.reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
 
-    if (results.length >= maxReviews) {
-        return results.slice(0, maxReviews);
-    }
+    try {
+        const pageSize = MAX_LIMIT;
+        let offset = 0;
+        const req = () => getRequest(callForReviews(listingId, pageSize, offset));
+        const response = await req();
+        await Apify.setValue('REVIEWS', response);
 
-    const numberOfHomes = data.metadata.reviews_count;
-    const numberOfFetches = numberOfHomes / pageSize;
-
-    for (let i = 0; i < numberOfFetches; i++) {
-        offset += pageSize;
-        await randomDelay();
-        (await req()).reviews.forEach(rev => results.push(camelcaseKeysRecursive(rev)));
+        const { reviews, metadata } = response.data.merlin.pdpReviews;
+        reviews.forEach((rev) => results.push(getFormattedReview(rev)));
 
         if (results.length >= maxReviews) {
             return results.slice(0, maxReviews);
         }
+
+        const numberOfHomes = metadata.reviews_count;
+        const numberOfFetches = numberOfHomes / pageSize;
+
+        for (let i = 0; i < numberOfFetches; i++) {
+            offset += pageSize;
+            await randomDelay();
+            (await req()).reviews.forEach((rev) => results.push(getFormattedReview(rev)));
+
+            if (results.length >= maxReviews) {
+                return results.slice(0, maxReviews);
+            }
+        }
+    } catch (e) {
+        log.exception(e, 'Could not get reviews');
     }
 
     return results;
@@ -393,11 +612,14 @@ async function isMaxListing(maxListings) {
 }
 
 module.exports = {
+    getRequestFnc,
+    enqueueDetailRequests,
+    enqueueLocationQueryRequests,
     addListings,
     pivot,
     getReviews,
     validateInput,
-    enqueueDetailLink,
+    buildDetailRequest,
     getSearchLocation,
     isMaxListing,
     meterPrecision,

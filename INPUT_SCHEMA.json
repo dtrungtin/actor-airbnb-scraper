@@ -1,7 +1,7 @@
 {
     "title": "Airbnb Scraper input",
     "description": "Just change the location you are interested in, click on run and your data is on its way!",
-    "type": "object", 
+    "type": "object",
     "schemaVersion": 1,
     "properties": {
       "locationQuery": {
@@ -29,6 +29,12 @@
         "type": "array",
         "description": "Urls of Airbnb details (not search urls), when set the actor will ignore locationQuery and will return results only for these listings",
         "editor": "requestListSources",
+        "prefill": [
+          {
+            "url": "https://www.airbnb.com/rooms/37288141"
+          }
+        ],
+        "uniqueItems": true,
         "sectionCaption": "URL(s) of a specific place(s)"
       },
       "includeReviews": {
