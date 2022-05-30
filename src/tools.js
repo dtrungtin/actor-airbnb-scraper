@@ -527,12 +527,13 @@ async function getCalendar(request, detailId, checkIn, calendarMonths, doReq) {
         log.info(`Requesting calendar for ${checkInDate}`, { url: request.url, id: detailId });
         const { calendar_months: months } = await doReq(getCalendarMonths(detailId, checkInDate, calendarMonths));
 
-        const now = moment();
+        const now = moment(moment().toISOString().split('T')[0]); // today's date without explicit time
+        const checkInMoment = moment(checkInDate);
 
         for (const month of months) {
             for (const day of month.days) {
                 const date = moment(day.date);
-                if (date.isSameOrAfter(now)) {
+                if (date.isSameOrAfter(checkInMoment) && date.isSameOrAfter(now)) {
                     // Airbnb stores `availability: false` for all days prior to the current date
                     calendarDays.push(day);
                 }
