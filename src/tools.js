@@ -557,7 +557,7 @@ function calculateOccupancyPercentage(calendarDays) {
     const FULLY_OCCUPIED_PERCENTAGE = 100;
 
     return calendarDays.length > 0
-        ? ((unavailableDays / calendarDays.length) * 100).toFixed(2)
+        ? parseFloat(((unavailableDays / calendarDays.length) * 100).toFixed(2))
         : FULLY_OCCUPIED_PERCENTAGE;
 }
 
