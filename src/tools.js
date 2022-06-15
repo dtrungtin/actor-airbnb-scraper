@@ -487,7 +487,6 @@ async function getReviews(listingId, getRequest, maxReviews) {
         let offset = 0;
         const req = () => getRequest(callForReviews(listingId, pageSize, offset));
         const response = await req();
-        await Apify.setValue('REVIEWS', response);
 
         const { reviews, metadata } = response.data.merlin.pdpReviews;
         reviews.forEach((rev) => results.push(getFormattedReview(rev)));
