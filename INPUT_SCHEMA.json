@@ -29,9 +29,6 @@
 "type": "array",
 "description": "Link to a room, house, flat, or apartment. When using this field, the scraper will ignore the Destination field and will get results only for specific listings.",
 "prefill": [
-{
-"url": "https://www.airbnb.com/rooms/31671872"
-}
 ],
 "editor": "requestListSources",
 "sectionCaption": "Airbnb Places (not Destination)"
