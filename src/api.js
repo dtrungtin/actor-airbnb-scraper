@@ -85,7 +85,7 @@ function callForReviews(listingId, limit = 50, offset = 0) {
             persistedQuery: { version: 1, sha256Hash: SHA_256_HASH },
         }),
     });
-    return `https://www.airbnb.cz/api/v3/PdpReviews?${reviewsUrlParams.toString()}`;
+    return `https://www.airbnb.com/api/v3/PdpReviews?${reviewsUrlParams.toString()}`;
 }
 
 /**
@@ -109,12 +109,13 @@ function getCalendarMonths(listingId, checkIn, months) {
  * @param {string} checkIn
  * @param {string} checkOut
  */
-function bookingDetailsUrl(listingId, checkIn, checkOut) {
+function bookingDetailsUrl(listingId, checkIn, checkOut, currency) {
     const bookingDetailsUrlParams = new URLSearchParams({
         check_in: checkIn,
         check_out: checkOut,
         _format: 'for_web_with_date',
         listing_id: listingId,
+        currency,
     });
 
     return `https://api.airbnb.com/v2/pdp_listing_booking_details?${bookingDetailsUrlParams.toString()}`;
