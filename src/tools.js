@@ -39,7 +39,7 @@ const getRequestFnc = (session, proxy, locale = DEFAULT_LOCALE) => async (url, o
             proxyUrl: proxy.newUrl(session ? session.id : `airbnb_${Math.floor(Math.random() * 100000000)}`),
             abortFunction: (res) => res.statusCode !== 200,
             timeout: {
-                request: DEFAULT_TIMEOUT_MILLISECONDS,
+                request: DEFAULT_TIMEOUT_MILLISECONDS * 10,
             },
             ...opts,
         };
@@ -655,6 +655,67 @@ async function isMaxListing(maxListings) {
     };
 }
 
+function buildPricingParts(priceItems) {
+    const pricingMap = {
+        ACCOMMODATION: 'accommodation',
+        DISCOUNT: 'discount',
+        CLEANING_FEE: 'cleaningFee',
+        AIRBNB_GUEST_FEE: 'guestFee',
+        TAXES: 'taxes',
+    };
+
+    const pricingParts = {};
+
+    priceItems.forEach((item) => {
+        const pricingField = pricingMap[item.type];
+        if (pricingField) {
+            const { amount } = item.total;
+            pricingParts[pricingField] = amount >= 0 ? amount : amount * -1;
+        }
+    });
+
+    return pricingParts;
+}
+
+function buildPricing(listingBookingDetail) {
+    const {
+        rate_type: rateType,
+        nights,
+        price: {
+            total: {
+                amount: totalPrice,
+                currency,
+                amount_formatted: totalAmountFormatted,
+                is_micros_accuracy: isMicrosAccuracy,
+            },
+            price_items: priceItems,
+        },
+    } = listingBookingDetail;
+
+    const amount = Number((totalPrice / nights).toFixed(2));
+    const totalPriceFormatted = totalAmountFormatted.replace(/\u00a0+/g, ' ');
+
+    const pricing = {
+        rate: {
+            // both `amount` and `amountFormatted` values depend on the current proxy
+            amount,
+            amountFormatted: totalPriceFormatted.replace(/(\d+[ ,]+\d+)+/, amount),
+            currency,
+            isMicrosAccuracy,
+        },
+        rateType,
+        nights,
+        totalPrice: {
+            amount: totalPrice,
+            amountFormatted: totalPriceFormatted,
+            ...buildPricingParts(priceItems),
+            currency,
+        },
+    };
+
+    return pricing;
+}
+
 module.exports = {
     getRequestFnc,
     enqueueDetailRequests,
@@ -670,4 +731,5 @@ module.exports = {
     isMaxListing,
     meterPrecision,
     makeInputBackwardsCompatible,
+    buildPricing,
 };

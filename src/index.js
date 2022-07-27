@@ -14,6 +14,7 @@ const {
     enqueueLocationQueryRequests,
     getCalendar,
     calculateOccupancyPercentage,
+    buildPricing,
 } = require('./tools');
 const { getBuildListingUrlFnc, bookingDetailsUrl, callForHostInfo } = require('./api');
 const {
@@ -141,30 +142,16 @@ Apify.main(async () => {
                                 || checkOut || null;
 
                         if (checkInDate && checkOutDate) {
-                            pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate);
+                            pricingDetailsUrl = bookingDetailsUrl(detail.id, checkInDate, checkOutDate, currency);
                             log.info(`Requesting pricing details from ${checkInDate} to ${checkOutDate}`,
                                 { url: pricingDetailsUrl, id: detail.id });
+
                             const pricingResult = await doReq(pricingDetailsUrl);
                             const { pdp_listing_booking_details } = pricingResult;
-                            const { available, rate_type: rateType, base_price_breakdown } = pdp_listing_booking_details[0];
-                            const { amount, amount_formatted: amountFormatted, is_micros_accuracy: isMicrosAccuracy } = base_price_breakdown[0];
+                            const { available } = pdp_listing_booking_details[0];
 
                             if (available) {
-                                simpleResult.pricing = {
-                                    rate: {
-                                        amount,
-                                        amountFormatted,
-                                        currency: base_price_breakdown[0].currency,
-                                        isMicrosAccuracy,
-                                    },
-                                    rateType,
-                                    rateWithServiceFee: {
-                                        amount,
-                                        amountFormatted,
-                                        currency: base_price_breakdown[0].currency,
-                                        isMicrosAccuracy,
-                                    },
-                                };
+                                simpleResult.pricing = buildPricing(pdp_listing_booking_details[0]);
                             }
                         }
                     } catch (e) {
@@ -191,23 +178,31 @@ Apify.main(async () => {
                 const isAbort = abortOnMaxItems();
 
                 if (!isAbort) {
-                    if (simple) {
-                        await Apify.pushData(simpleResult);
-                    } else {
-                        const newResult = {
-                            ...simpleResult,
-                            ...result,
-                            locationTitle: undefined,
-                            starRating: undefined,
-                            guestLabel: undefined,
-                            p3SummaryTitle: undefined,
-                            lat: undefined,
-                            lng: undefined,
-                            roomAndPropertyType: undefined,
-                        };
+                    const finalResult = simple ? simpleResult : {
+                        ...simpleResult,
+                        ...result,
+                        locationTitle: undefined,
+                        starRating: undefined,
+                        guestLabel: undefined,
+                        p3SummaryTitle: undefined,
+                        lat: undefined,
+                        lng: undefined,
+                        roomAndPropertyType: undefined,
+                    };
 
-                        await Apify.pushData(newResult);
+                    if (minPrice && finalResult.pricing && finalResult.pricing.rate.amount < minPrice) {
+                        log.info(`Skipping home detail - ${detail.id}.
+                        Price: ${finalResult.pricing.rate.amount}, requested minPrice: ${minPrice}`);
+                        return;
                     }
+
+                    if (maxPrice && finalResult.pricing && finalResult.pricing.rate.amount > maxPrice) {
+                        log.info(`Skipping home detail - ${detail.id}.
+                        Price: ${finalResult.pricing.rate.amount}, requested maxPrice: ${maxPrice}`);
+                        return;
+                    }
+
+                    await Apify.pushData(finalResult);
                 } else {
                     await crawler.autoscaledPool.abort();
                 }
@@ -216,9 +211,11 @@ Apify.main(async () => {
 
         handleFailedRequestFunction: async ({ request }) => {
             log.warning(`Request ${request.url} failed too many times`);
-            await Apify.pushData({
-                '#debug': Apify.utils.createRequestDebugInfo(request),
-            });
+            if (log.getLevel() === log.LEVELS.DEBUG) {
+                await Apify.pushData({
+                    '#debug': Apify.utils.createRequestDebugInfo(request),
+                });
+            }
         },
     });
 
