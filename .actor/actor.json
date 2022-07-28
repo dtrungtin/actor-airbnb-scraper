@@ -5,74 +5,73 @@
   "description": "Scrapes results from Airbnb.com",
   "version": "0.0.1",
   "storages": {
-      "dataset": {
-          "actorSpecification": 1,
-          "title": "Airbnb Scraper",
-          "description": "Too see all scraped properties, export the whole dataset or select All fields instead of Overview",
-          "views": {
-              "overview": {
-                  "title": "Overview",
-                  "description": "",
-                  "transformation": {
-                      "fields": [
-                          "name",
-                          "roomType",
-                          "stars",
-                          "address",
-                          "numberOfGuests",
-                          "pricing",
-                          "reviews",
-                          "url"
-                      ]
-
-                  },
-                  "display": {
-                      "component": "table",
-                      "columns": [
-                          { 
-                              "label": "Name",
-                              "format": "text",
-                              "field": "name"
-                          },
-                          { 
-                              "label": "Room type",
-                              "format": "text",
-                              "field": "roomType"
-                          },
-                          { 
-                              "label": "Stars",
-                              "format": "number",
-                              "field": "stars"
-                          },
-                          { 
-                              "label": "Address",
-                              "format": "text",
-                              "field": "address"
-                          },
-                          { 
-                              "label": "Number of guests",
-                              "format": "number",
-                              "field": "numberOfGuests"
-                          },
-                          { 
-                              "label": "Price",
-                              "format": "text",
-                              "field": "pricing.rate.amount_formatted"
-                          },
-                          { 
-                              "label": "Reviews",
-                              "format": "text",
-                              "field": "reviews"
-                          },
-                          { 
-                              "label": "URL",
-                              "format": "link",
-                              "field": "url"
-                          }
-                      ]
-                  }
+    "dataset": {
+      "actorSpecification": 1,
+      "title": "Airbnb Scraper",
+      "description": "Too see all scraped properties, export the whole dataset or select All fields instead of Overview",
+      "views": {
+        "overview": {
+          "title": "Overview",
+          "description": "",
+          "transformation": {
+            "fields": [
+              "name",
+              "roomType",
+              "stars",
+              "address",
+              "numberOfGuests",
+              "pricing",
+              "reviews",
+              "url"
+            ]
+          },
+          "display": {
+            "component": "table",
+            "columns": [
+              {
+                "label": "Name",
+                "format": "text",
+                "field": "name"
+              },
+              {
+                "label": "Room type",
+                "format": "text",
+                "field": "roomType"
+              },
+              {
+                "label": "Stars",
+                "format": "number",
+                "field": "stars"
+              },
+              {
+                "label": "Address",
+                "format": "text",
+                "field": "address"
+              },
+              {
+                "label": "Number of guests",
+                "format": "number",
+                "field": "numberOfGuests"
+              },
+              {
+                "label": "Price",
+                "format": "text",
+                "field": "pricing.rate.amountFormatted"
+              },
+              {
+                "label": "Reviews",
+                "format": "text",
+                "field": "reviews"
+              },
+              {
+                "label": "URL",
+                "format": "link",
+                "field": "url"
               }
+            ]
           }
+        }
       }
+    }
   }
 }
