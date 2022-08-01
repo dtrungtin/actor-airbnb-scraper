@@ -1,132 +1,108 @@
-Airbnb Scraper is designed to extract most of the publicly available Airbnb data for home listings. You can get all of the basic data about the listing, all reviews, prices, host/guest details, etc.
 
 ## What does Airbnb Scraper do?
-
-This scraper will extract all listings for a particular location. Typically, Airbnb will provide only the first 300 results on their website and limit the API to 1000 results. But with our Unofficial Airbnb API, you can access all of them. Now you can: 
+This scraper can extract all listings for a particular area and all details for a particular Airbnb listing. Airbnb usually only provides the first 300 results on the website and limits the API to 1,000 results. But with our unofficial Airbnb API, you can access all possible results. Now you can: 
 
 - get all **Airbnb listings from one location**: rating, price, number of guests, location details, indicated address, URL, reviews.
-- specify the price range, check-in, and check-out dates. 
-- **scrape Airbnb prices** in various currencies.
-- **extract all Airbnb reviews** from one listing: initial comments, responses, name, rating, language, author ID, posting time, etc.
-- scrape by input schema parameters or by using an external link with a list of URLs to scrape (CSV, Google Sheets).
+- **extract all Airbnb reviews** from one listing: initial comments, responses, name, rating, language, author ID, posting time, and lots more.
+- **get Airbnb prices** in various currencies.
+- specify price range, check-in, and check-out dates. 
+- scrape listings one by one or by pasting an external link with a list of URLs to scrape (CSV, Google Sheets).
 
-## Cost of usage
+## How much does it cost to scrape Airbnb?
+Running Airbnb Scraper once will get you  **1,000 results for less than USD 1 in Apify platform credits**. For more details about the plans we offer, platform credits, and usage, see the [platform pricing page](https://apify.com/pricing/actors) or this video guide on &#9655; [how to choose the right subscription plan](https://www.youtube.com/watch?v=s_89WpOsKRI). 
 
-Following our basic plan, one Airbnb Scraper run will get you  **1,000 results for less than 1 USD credits**. For more details about the plans we offer, platform credits, and usage, see the  [platform pricing page](https://apify.com/pricing/actors).
-
-If you're not sure how much credit you've got on your plan and whether you might need to upgrade, you can always check your limits in the  _Settings_  ->  _Usage and Billing_  tab in  [your Console](https://console.apify.com/). The easiest way to know how many credits your actor will need is to perform a *test run*.
-
-## Tutorial 
-
-For a step-by-step guide on how to scrape Airbnb, just follow our [Airbnb Scraper tutorial](
+## How to scrape Airbnb data
+For a step-by-step guide on how to scrape Airbnb, follow our [Airbnb Scraper tutorial](
 https://blog.apify.com/how-to-scrape-airbnb-listings-and-reviews/
-). Once you're done with scraping, see how the extracted data is used in [traveling and tourism](https://apify.com/industries/travel-and-logistics) industries. 
+). 
 
-**How to use the scraped data for Airbnb data analysis:**
-
--   **Monitor amount of Airbnb listings** in a chosen location and get the newest prices updates.
+## How can you use scraped Airbnb data?
+-  **Monitor Airbnb listings** in your chosen location and get the newest prices updates.
 - **Predict prices** for the given location for the upcoming tourist season.
-- **Find emerging trends** within the travel industry and adapt your offering.
-- **Analyze customer expectations** and preferences in terms of price range, housing size, features, available infrastructure etc.  
+- **Find emerging trends** and gain **competitive intelligence** for the travel industry and adapt your own pricing.
+- **Analyze customer expectations** and preferences in terms of price range, housing size, features, available infrastructure, and much more.  
 - **Analyze reviews** using sentiment analysis to identify the most successful locations in town.
-- Narrow down to the **emerging popular locations to target** with the new touring or lodging offers.
-- **Support your decisions with data** when deciding to open/visit a new spot away from most popular destinations.
+- Narrow down **emerging popular locations to target** with the new touring or lodging offers.
+- **Support your decisions with data** when deciding to open pr visit a new spot away from most popular destinations.
 
-## Input parameters
-
-There are two ways you can scrape Airbnb:
- 1. by **`locationQuery`** parameter - will get you all available listings for a given location (city, town). 
- 2.  or by **`startUrls`** parameter - will get you all details from a single listing URL. Can be used only for 
+## How to scrape Airbnb Destination or Airbnb Place
+There are two ways you can scrape Airbnb: either by Destination or by Place.
+ 1. Scraping **by Destination** will get you data from Airbnb search results page. You'll get main info on all available listings in any city or town. 
+ 2. Scraping **by Place** will get you all details from a single rental listing (reviews, price, availability). You can add as many listings as you want.
  
-### How to get all listings for given location:
-It is super easy to get all Airbnb listings for a location. Just use `locationQuery` parameter - enter the city name as you would enter it on a search bar on a website. 
+### How to scrape all Airbnb listings in an area
+It's super easy to get all Airbnb listings by Destination. Just enter the city name as you would do it in and Airbnb search, then indicate the number of results you want to scrape. 
 
-If you are looking for more specific results, then you can also add optional parameters:
+![Apify  -  Airbnb  Scraper  input](https://i.imgur.com/BDyPlHa.png)
 
--  `checkIn` - `checkOut` dates.
-- `includeCalendar` will include the data on available range of days.
-- `currency` will scrape the results in the currency of choice.
-- `minPrice` - `maxPrice` - use this pair to specify the price range.
-- `includeReviews` and `maxReviews` will set the necessity and amount of reviews to scrape.
-- `simple` - will get only the main Airbnb listing data and skip the details.
-- `addMoreHostInfo` will add details for the primary host such as host URL and number of listings. Will only work if the `simple` parameter is not enabled.
-- `proxyConfiguration` will set Apify Proxy or your custom Proxy.
-
-### Input example (locationQuery)
-
+Here's its equivalent in JSON:
 ```json
 {
+  "locationQuery": "Sacramento, California",
+  "maxListings": 200,
   "simple": true,
   "includeReviews": true,
-  "includeCalendar": false,
+  "maxReviews": 10,
+  "calendarMonths": 0,
   "addMoreHostInfo": false,
   "currency": "USD",
   "proxyConfiguration": {
     "useApifyProxy": true
   },
-  "maxListings": 50,
   "maxConcurrency": 50,
   "limitPoints": 100,
   "timeoutMs": 60000,
   "debugLog": false,
-  "maxReviews": 15,
-  "checkIn": "2022-05-06",
-  "checkOut": "2022-05-16",
-  "maxPrice": 100,
-  "locationQuery": "New York",
-  "minPrice": 0
+  "minPrice": 20,
+  "maxPrice": 200,
+  "checkIn": "2022-08-09"
 }
-
 ```
 
-### Get listing detail for a list of URLs
-
-It is also easy to get all details for a specific listing. Just use **`startUrls`** parameter - enter the URL of the home listing you want to scrape. Note that this parameter only accepts direct listing URLs. Using `startUrls` input parameter, you can:
-
+### How to scrape all details from a single rental listing 
+It is also easy to get all details for a specific listing. Just enter the URL of the home listing you want to scrape. Note that this parameter only accepts *direct* listing URLs. Using this field, you can:
 - scrape just one URL (one Airbnb listing).
 - scrape multiple URLs in parallel by adding more URL fields.
 - for convenience, instead of adding multiple URL fields, you can also paste a link to Google Sheets or a CSV containing the list of your URLs.
 - paste original or shortened abnb.me URLs.
 
-You can include any parameters listed in the previous section as well. For the full list of optional parameters, their default values, and how to set the values of your own, see the [Input Schema tab](https://apify.com/dtrungtin/airbnb-scraper/input-schema#locationQuery).
 
-### Input example (startURLs)
+![Apify  -  Airbnb  Scraper  input](https://i.imgur.com/TXNXcS2.png[)
 
+Here's its equivalent in JSON:
 ```json
 {
   "simple": true,
   "includeReviews": true,
-  "includeCalendar": true,
+  "maxReviews": 10,
+  "calendarMonths": 0,
   "addMoreHostInfo": true,
   "currency": "USD",
   "proxyConfiguration": {
     "useApifyProxy": true
   },
-  "maxListings": 50,
   "maxConcurrency": 50,
   "limitPoints": 100,
   "timeoutMs": 60000,
   "debugLog": false,
-  "maxReviews": 20,
-  "checkIn": "2022-05-06",
-  "checkOut": "2022-05-16",
-  "maxPrice": 150,
+  "minPrice": 20,
+  "maxPrice": 200,
+  "checkIn": "2022-08-09",
   "startUrls": [
     {
-      "url": "https://www.airbnb.com/rooms/44799007?check_in=2022-05-06&check_out=2022-05-16&federated_search_id=515c24ee-36ef-4c91-bcc2-27d3378cf8ad&source_impression_id=p3_1644398714_7dT9%2FkKgLeA913DZ"
+      "url": "https://www.airbnb.com/rooms/30692949"
     }
   ],
-  "locationQuery": "Sacramento",
-  "minPrice": 0
+  "maxListings": 200
 }
 ```
 
+For the full list of optional parameters, their default values, and how to set the values of your own, see the [Input Schema tab](https://apify.com/dtrungtin/airbnb-scraper/input-schema).
+
 ##  Airbnb data output 
+The output from Airbnb Scraper is stored in the dataset. After the run is finished, you can download the dataset in various data formats (JSON, CSV, XML, RSS, HTML Table).
 
-The output from Airbnb Scraper is stored in the dataset. After the run is finished, you can download the contents of the dataset in various data formats (JSON, CSV, XML, RSS, HTML Table).
-
-### Output example (locationQuery)
-
+### Output example (scrape by Destination)
 ```json
 [{
   "url": "https://www.airbnb.com/rooms/28763257",
@@ -218,12 +194,10 @@ The output from Airbnb Scraper is stored in the dataset. After the run is finish
 
 ## Limitations
 -  In order to accomplish the run, the scraper mainly splits the location into smaller areas and divides the price range into smaller ranges. Because of this approach, you might see more crawling pages compared to the results you get, and the run of this actor might take longer to complete. 
-- `startUrls` will only scrape from a URL of a specific listing. This parameter cannot be used for other URLs, such as search result URL, for instance. 
+-  *Airbnb Places* field will only scrape from a URL of a specific listing. This parameter cannot be used for other URLs, such as search result URL, for instance. 
 
-## Other travel industry scrapers
-
-We have other tourism-related scrapers in stock for you, for instance, [Booking Scraper](https://apify.com/dtrungtin/booking-scraper) and [Tripadvisor Scraper](https://apify.com/maxcopell/tripadvisor). If you are interested in those, head over to browse through the [Travel Category](https://apify.com/store?category=TRAVEL)  in Apify Store.
+## Other travel scrapers
+We have other tourism-related scrapers for you to try, such as [Booking Scraper](https://apify.com/dtrungtin/booking-scraper) and [Tripadvisor Scraper](https://apify.com/maxcopell/tripadvisor). If you're interested in those, browse the [Travel Category](https://apify.com/store?category=TRAVEL) in Apify Store.
 
 ## Your feedback
-
-We’re always striving to improve the performance of our actors. For any technical feedback about the work of our Airbnb Scraper or reporting a bug, please create an issue on the  [Github page](https://github.com/dtrungtin/actor-airbnb-scraper) or email us at  `support@apify.com` and we’ll get to it.
+We're always striving to improve the performance of our actors. To give us technical feedback about Airbnb Scraper or to report a bug, please create an issue on the  [GitHub page](https://github.com/dtrungtin/actor-airbnb-scraper) or email us at  `support@apify.com` and we'll get to it.
