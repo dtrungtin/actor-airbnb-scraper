@@ -559,13 +559,6 @@ function calculateOccupancyPercentage(calendarDays) {
         : FULLY_OCCUPIED_PERCENTAGE;
 }
 
-/**
- * Converts floating geopoint to ~113m precision (3 decimals)
- */
-function meterPrecision(value) {
-    return +(+`${value}`).toFixed(3);
-}
-
 function makeInputBackwardsCompatible(input) {
     // Deprecated on 2022-4
     if (input.includeCalendar) {
@@ -729,7 +722,6 @@ module.exports = {
     buildDetailRequest,
     getSearchLocation,
     isMaxListing,
-    meterPrecision,
     makeInputBackwardsCompatible,
     buildPricing,
 };
