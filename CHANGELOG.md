@@ -1,5 +1,11 @@
 ## 2022-07-28
 
+- Fixed circular dependency error
+- Fixed error with default min/max prices and empty pricing
+- Prioritized home detail requests to retrieve the results sooner
+
+## 2022-07-28
+
 - Fixed pricing extraction
 - Extended nightly price rate with total price info
 - Propagated input currency to pricing API request

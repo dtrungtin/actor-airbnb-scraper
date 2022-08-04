@@ -138,7 +138,7 @@ const enqueueDetailRequests = async (requestQueue, startUrls, { minPrice, maxPri
         const id = url.pathname.split('/').pop();
 
         const detailRequest = buildDetailRequest(id, minPrice, maxPrice, request.url, {});
-        await requestQueue.addRequest(detailRequest);
+        await requestQueue.addRequest(detailRequest, { forefront: true });
 
         request = await requestList.fetchNextRequest();
     }
@@ -159,7 +159,7 @@ const enqueueLocationQueryRequests = async (requestQueue, input, proxy, buildLis
     // Divide location into smaller areas to search more results
     if (!maxListings || maxListings > 1000) {
         const doReq = getRequestFnc(null, proxy);
-        const cityQuery = await getSearchLocation({ maxPrice, minPrice }, locationQuery, doReq, buildListingUrlFnc);
+        const cityQuery = await getSearchLocation({ minPrice, maxPrice }, locationQuery, doReq, buildListingUrlFnc);
         log.info(`Location query: ${cityQuery}`);
         const areaList = await cityToAreas(cityQuery, doReq, limitPoints, timeoutMs);
 
@@ -188,7 +188,7 @@ async function enqueueListingsFromSection(results, requestQueue, minPrice, maxPr
 
         const detailLink = buildDetailRequest(result.listing.id, minPrice, maxPrice, originalUrl, { rate, rateType, rateWithServiceFee });
         log.debug(`Enquing home with id: ${result.listing.id}`);
-        await requestQueue.addRequest(detailLink);
+        await requestQueue.addRequest(detailLink, { forefront: true });
     }
 }
 
@@ -559,13 +559,6 @@ function calculateOccupancyPercentage(calendarDays) {
         : FULLY_OCCUPIED_PERCENTAGE;
 }
 
-/**
- * Converts floating geopoint to ~113m precision (3 decimals)
- */
-function meterPrecision(value) {
-    return +(+`${value}`).toFixed(3);
-}
-
 function makeInputBackwardsCompatible(input) {
     // Deprecated on 2022-4
     if (input.includeCalendar) {
@@ -729,7 +722,6 @@ module.exports = {
     buildDetailRequest,
     getSearchLocation,
     isMaxListing,
-    meterPrecision,
     makeInputBackwardsCompatible,
     buildPricing,
 };

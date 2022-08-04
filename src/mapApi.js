@@ -2,7 +2,6 @@ const Apify = require('apify');
 const turf = require('@turf/turf');
 
 const { DISTANCE_METERS } = require('./constants');
-const { meterPrecision } = require('./tools');
 
 const { log, sleep } = Apify.utils;
 
@@ -135,6 +134,13 @@ function findPointsInPolygon(location, distanceKilometers, limitPoints) {
     }
 
     return points;
+}
+
+/**
+ * Converts floating geopoint to ~113m precision (3 decimals)
+ */
+function meterPrecision(value) {
+    return +(+`${value}`).toFixed(3);
 }
 
 async function cityToAreas(cityQuery, getRequest, limitPoints, timeoutMs = 300000) {

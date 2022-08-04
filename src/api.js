@@ -47,11 +47,11 @@ const getBuildListingUrlFnc = ({
             url.searchParams.set('query', location);
         }
 
-        if (typeof minPrice === 'number' && minPrice < maxPrice) {
+        if (typeof minPrice === 'number' && minPrice <= maxPrice) {
             url.searchParams.set('price_min', `${minPrice}`);
         }
 
-        if (typeof maxPrice === 'number' && maxPrice > minPrice) {
+        if (typeof maxPrice === 'number' && maxPrice >= minPrice) {
             url.searchParams.set('price_max', `${maxPrice}`);
         }
 

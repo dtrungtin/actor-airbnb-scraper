@@ -190,13 +190,13 @@ Apify.main(async () => {
                         roomAndPropertyType: undefined,
                     };
 
-                    if (minPrice && finalResult.pricing && finalResult.pricing.rate.amount < minPrice) {
+                    if (minPrice && finalResult.pricing && finalResult.pricing.rate && finalResult.pricing.rate.amount < minPrice) {
                         log.info(`Skipping home detail - ${detail.id}.
                         Price: ${finalResult.pricing.rate.amount}, requested minPrice: ${minPrice}`);
                         return;
                     }
 
-                    if (maxPrice && finalResult.pricing && finalResult.pricing.rate.amount > maxPrice) {
+                    if (maxPrice && finalResult.pricing && finalResult.pricing.rate && finalResult.pricing.rate.amount > maxPrice) {
                         log.info(`Skipping home detail - ${detail.id}.
                         Price: ${finalResult.pricing.rate.amount}, requested maxPrice: ${maxPrice}`);
                         return;
